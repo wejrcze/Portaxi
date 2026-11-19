@@ -233,15 +233,33 @@ local function caps()
 end
 
 local function cityName(r)
-  local city = K.CITY[r.dest]
+  local city = K.CITY[r.dest or ""]
   return city and L[city.name] or tostring(r.dest)
 end
 
 local function serviceName(svc)
+  if svc == "HOP" then
+    return L["Inn hop"]
+  end
   return svc == "COME" and L["Come to you"] or L["Pickup"]
 end
 
+-- Inn hop (D20): the mage is the taxi, the host the rider; no trade and no portal.
+local function hopStep(r, name)
+  if name == "TRAVEL" then
+    return r.role == "taxi" and L["Teleport to the host"] or L["The mage teleports to you"]
+  elseif name == "Trade" then
+    return L["Arrive"]
+  elseif name == "Portal" then
+    return r.role == "taxi" and L["Leave the group"] or L["The mage leaves"]
+  end
+  return L[name]
+end
+
 local function stepLabel(r, name)
+  if r.svc == "HOP" then
+    return hopStep(r, name)
+  end
   if name == "TRAVEL" then
     if r.svc == "COME" then
       return r.role == "taxi" and L["Teleport to the rider"] or L["The taxi teleports to you"]
@@ -259,6 +277,9 @@ local function statusText(r)
       why = why .. " " .. L["Late cancel."]
     end
     return head .. ": " .. why
+  end
+  if r.svc == "HOP" and r.state == "DONE" then
+    return r.role == "taxi" and L["You are there. Enjoy the trip!"] or L["The mage arrived. Thanks for hosting!"]
   end
   return L[STATUS[r.state] or r.state]
 end
@@ -359,13 +380,19 @@ function P.view()
   for i, name in ipairs(STEPS) do
     steps[i] = { text = stepLabel(r, name), done = i < current, current = i == current }
   end
+  local hop = r.svc == "HOP"
+  local title = L["Ride to %s"]:format(cityName(r))
+  if hop then
+    title = r.role == "taxi" and L["Hop to %s"]:format(r.dest and cityName(r) or r.peer.key) or L["Hosting a hop"]
+  end
   return {
-    title = L["Ride to %s"]:format(cityName(r)),
-    sub = r.role == "taxi" and L["You drive"] or L["You ride"],
-    peerKey = r.role == "taxi" and L["Rider"] or L["Taxi"],
+    title = title,
+    sub = hop and (r.role == "taxi" and L["You hop"] or L["You host"])
+      or (r.role == "taxi" and L["You drive"] or L["You ride"]),
+    peerKey = hop and (r.role == "taxi" and L["Host"] or L["Mage"]) or (r.role == "taxi" and L["Rider"] or L["Taxi"]),
     peer = r.peer.key,
     service = serviceName(r.svc),
-    price = W.money(r.price),
+    price = hop and L["free"] or W.money(r.price),
     steps = steps,
     status = statusText(r),
     secure = secureText(r),

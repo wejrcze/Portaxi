@@ -395,6 +395,13 @@ Who.ask(key)                  -- whisper template (English); once that player ha
                               -- (the mage accepted the invite by hand, R4) a ride { svc = "HOP", peer.noAddon = true }
                               -- starts: no STATE, the scroll armed without the host's resting; the mage leaves by hand
 Who.results() -> list, zone ; Who.awaiting() -> { [key] = time }   -- events WHO_RESULTS(list, zone), WHO_CHANGED
+-- UI (UI/HopTab.lua): MainFrame tab "hop" while HopTab.wanted(profile) (MAGE with scrolls); HopTab.view(profile) ->
+--   { status, pauses, places = { label, city, hosts, enabled }, empty, request, requestWarn, who, whoEmpty, whoNote };
+--   "Hop here" = Hop.request(first host of the place); Search = Who.search(zone box); Ask = Who.ask
+-- Ride tab: ghost toggle "Hosting: on/off" at the top right (HopTab.hostToggle / toggleHosting)
+-- Host popup "PortaxiHopRequest" on HOP_REQUEST: raid warning + sound, countdown, Accept / Decline -> Hop.answer
+-- RidePanel for svc HOP: title "Hop to <city or host>" / "Hosting a hop", steps Travel / Arrive / Leave the group,
+--   price "free"; /ptx hop opens the Hop tab
 ```
 
 ### UI (agent F, potom G a H)

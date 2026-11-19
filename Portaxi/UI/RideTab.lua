@@ -12,6 +12,8 @@
 -- Taxis on the map (D19) come first in Browse while the rider may see them (Field.nearby): a green stripe, the
 -- distance and the walk instead of the zone, nearest first. Their Book sends the rider's own ETA along. While
 -- such rows are shown, the page redraws every NEAR_REFRESH s so the distance follows the walking rider.
+-- Inn hop (D20, R5): a small "Hosting: on/off" toggle at the top right (HopTab.hostToggle / toggleHosting); any
+-- class can host mage travellers while resting.
 
 local _, ns = ...
 
@@ -62,6 +64,15 @@ R.ERRORS = {
 local function buildReadout(page, ui)
   ui.name = W.label(page, "GameFontNormal", C.TEXT)
   ui.name:SetPoint("TOPLEFT", page, "TOPLEFT", 0, 0)
+  ui.host = W.button(page, L["Hosting: off"], 96, 18, "ghost")
+  ui.host:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, 2)
+  ui.host:SetScript("OnClick", function()
+    local H = ns.UI.HopTab
+    if H and H.toggleHosting then
+      H.toggleHosting()
+    end
+    R.redraw()
+  end)
   ui.pills = {}
   for _, field in ipairs({ "faction", "character", "place", "resting", "gold" }) do
     local p = W.pill(page)
@@ -579,6 +590,13 @@ function R.refresh(profile, services)
   refreshHail(R.ui, profile, st)
   refreshBrowse(R.ui, profile, st)
   refreshStatus(R.ui, profile, st)
+  local H = ns.UI.HopTab
+  local text, on = "", false
+  if H and H.hostToggle then
+    text, on = H.hostToggle()
+  end
+  R.ui.host:SetText(text)
+  W.setToggle(R.ui.host, on)
 end
 
 -- Redraws with the last data, after a click inside the page or a network event.
@@ -592,7 +610,8 @@ local function redrawIfVisible()
   end
 end
 
-for _, event in ipairs({ "MARKET_CHANGED", "HAIL_RESULT", "RIDE_STARTED", "RIDE_STATE", "CHAT_OFFERS_CHANGED" }) do
+for _, event in ipairs({ "MARKET_CHANGED", "HAIL_RESULT", "RIDE_STARTED", "RIDE_STATE", "CHAT_OFFERS_CHANGED",
+  "HOP_CHANGED" }) do
   ns.on(event, redrawIfVisible)
 end
 

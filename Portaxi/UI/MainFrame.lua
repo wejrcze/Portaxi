@@ -1,4 +1,5 @@
--- UI.MainFrame: the Portaxi window with bottom tabs Ride / Drive (Drive only when services.canDrive).
+-- UI.MainFrame: the Portaxi window with bottom tabs Ride / Drive / Hop (Drive only when services.canDrive; Hop,
+-- Inn hop D20, only for a mage with scrolls: HopTab.wanted).
 -- Global frame "PortaxiMainFrame" (D2), built lazily on first show; movable, position in PortaxiDB.ui.pos,
 -- closes on Esc. Refreshes on PROFILE_CHANGED; the "taxis online" line on MARKET_CHANGED.
 -- Look of the mock v0.8: gold trim (red-brown for the Horde), title bar with the round player portrait over
@@ -21,6 +22,8 @@ local WIDTH, HEIGHT = 380, 584
 local TITLE_HEIGHT = 44
 local PORTRAIT = 46
 local TAB_W, TAB_H = 92, 26
+local TABS = { "ride", "drive", "hop" }
+local TAB_TEXT = { ride = "Ride", drive = "Drive", hop = "Hop" }
 
 M.tab = "ride" -- last selected tab
 
@@ -113,8 +116,8 @@ end
 
 local function buildTabs(frame)
   M.tabButtons = {}
-  for _, name in ipairs({ "ride", "drive" }) do
-    local b = W.button(frame, name == "ride" and L["Ride"] or L["Drive"], TAB_W, TAB_H, "ghost")
+  for _, name in ipairs(TABS) do
+    local b = W.button(frame, L[TAB_TEXT[name]], TAB_W, TAB_H, "ghost")
     b:SetScript("OnClick", function() M.select(name) end)
     M.tabButtons[name] = b
   end
@@ -122,7 +125,7 @@ end
 
 local function buildContent(frame)
   M.pages = {}
-  for name, module in pairs({ ride = ns.UI.RideTab, drive = ns.UI.DriveTab }) do
+  for name, module in pairs({ ride = ns.UI.RideTab, drive = ns.UI.DriveTab, hop = ns.UI.HopTab }) do
     local page = CreateFrame("Frame", nil, frame)
     page:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -(TITLE_HEIGHT + 12))
     page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
@@ -181,7 +184,8 @@ local function subtitle(profile, services)
   if not profile then
     return L["Waiting for character data"]
   end
-  local role = (M.tab == "drive" and canDrive(services)) and L["Taxi"] or L["Rider"]
+  local role = (M.tab == "drive" and canDrive(services)) and L["Taxi"] or (M.tab == "hop" and L["Inn hop"])
+    or L["Rider"]
   return ("%s · %s · %s %s"):format(L[profile.faction or "?"], role, W.className(profile.class),
     tostring(profile.level or ""))
 end
@@ -195,17 +199,24 @@ local function placeTab(b, x, on, trim)
   W.setFill(b, on and C.PANEL or C.DARK)
 end
 
-local function updateTabs(services, trim)
-  local drive = canDrive(services)
-  if M.tab == "drive" and not drive then
+local function canHop(profile)
+  local H = ns.UI.HopTab
+  return type(H) == "table" and type(H.wanted) == "function" and H.wanted(profile) == true
+end
+
+local function updateTabs(profile, services, trim)
+  local shown = { ride = true, drive = canDrive(services), hop = canHop(profile) }
+  if not shown[M.tab] then
     M.tab = "ride"
   end
-  M.tabButtons.drive:SetShown(drive)
   local x = 24
-  for _, name in ipairs({ "ride", "drive" }) do
+  for _, name in ipairs(TABS) do
     local on = name == M.tab
-    placeTab(M.tabButtons[name], x, on, trim)
-    x = x + TAB_W + 4
+    M.tabButtons[name]:SetShown(shown[name])
+    if shown[name] then
+      placeTab(M.tabButtons[name], x, on, trim)
+      x = x + TAB_W + 4
+    end
     M.pages[name]:SetShown(on)
   end
 end
@@ -236,14 +247,14 @@ function M.refresh(profile, services)
   services = services or {}
   local trim = W.trimFor(profile and profile.faction)
   updateTrim(trim)
-  updateTabs(services, trim)
+  updateTabs(profile, services, trim)
   M.subtitle:SetText(subtitle(profile, services))
   M.online:SetText(M.onlineText(profile))
   local setPortrait = ns.api("SetPortraitTexture")
   if setPortrait then
     setPortrait(M.portrait, "player")
   end
-  local page = M.tab == "drive" and ns.UI.DriveTab or ns.UI.RideTab
+  local page = ({ drive = ns.UI.DriveTab, hop = ns.UI.HopTab })[M.tab] or ns.UI.RideTab
   if page and page.refresh then
     page.refresh(profile, services)
   end
@@ -251,17 +262,21 @@ end
 
 -- Public API (playbook §2 "UI") ------------------------------------------------------------
 
+local function tabName(tab)
+  return (tab == "drive" or tab == "hop") and tab or "ride"
+end
+
 function M.select(tab)
-  M.tab = (tab == "drive") and "drive" or "ride"
+  M.tab = tabName(tab)
   M.refresh()
 end
 
--- Opens the window on a tab ("ride" | "drive"); nil keeps the last one. Drive falls back to Ride
--- when the character cannot drive.
+-- Opens the window on a tab ("ride" | "drive" | "hop"); nil keeps the last one. A tab the character cannot use
+-- falls back to Ride.
 function M.show(tab)
   local frame = M.frame or build()
   if tab then
-    M.tab = (tab == "drive") and "drive" or "ride"
+    M.tab = tabName(tab)
   end
   frame:Show()
   M.refresh()

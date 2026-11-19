@@ -11,7 +11,7 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
   module contracts, file ownership, test simulator, in-game gates. Contracts there change only through the architect.
 - `docs/FIELD_TAXI_PLAN.md` — plan of the map feature (D19): mages levelling outside show on riders' world map.
 - `docs/INN_HOP_PLAN.md` — plan of the Inn hop feature (a mage scrolls to a resting host at any inn or capital);
-  decisions R1–R5 confirmed, D20 and its contracts in the playbook; steps 1–4 done (Core/Hop.lua, Core/Who.lua, Ride svc HOP), next is step 5 (UI).
+  decisions R1–R5 confirmed, D20 and its contracts in the playbook; steps 1–5 done offline (Hop.lua, Who.lua, Ride svc HOP, UI/HopTab.lua), next is step 6 (two players in game).
 - `docs/mock/portaxi.html` — clickable UX mock (open it in a browser).
 - `CLAUDE.local.md` (git-ignored, optional) — machine-specific notes: the game path, published mock link.
 - `tools/` — dev scripts (`link-addon.ps1`, `check.ps1`, `setup-tools.ps1`, `package.ps1` builds `dist/ForeverPortaxi-<version>.zip` for CurseForge).
