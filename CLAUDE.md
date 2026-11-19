@@ -45,6 +45,12 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
   `tests/version_test.lua` fails when the three disagree. A `-dev` suffix marks a build that is not released:
   it never tells others to update.
 - Then `tools\package.ps1` builds `dist/ForeverPortaxi-<version>.zip`.
+- Commit, then `tools\release.ps1` (dry run: checks, zip, prints the upload) and `tools\release.ps1 -Upload`
+  (beta; `-ReleaseType release` for a stable one) uploads it to CurseForge project 1816274 with the
+  `Changelog.lua` entry as the changelog and WoW Forever `-GameVersion` (default `1.60.1`). It refuses `-dev`
+  versions and uncommitted changes in `Portaxi/`. The upload token is the user environment variable
+  `CURSEFORGE_API_TOKEN`; never put it in the repo or print it. The API only uploads files: the project
+  description (`docs/curseforge/description.md`) is pasted on the website. Tag the release `v<version>`.
 - The `VER|<version>` message (playbook D17) is the one message without a protocol version. Never change its
   format: every released Portaxi must keep reading it.
 

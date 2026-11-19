@@ -15,6 +15,12 @@ between themselves.
 
 ## Installation
 
+On CurseForge the addon is called **ForeverPortaxi**:
+[curseforge.com/projects/1816274](https://www.curseforge.com/projects/1816274). In the CurseForge app pick the
+*Forever* flavour and install it from there. In game it shows as ForeverPortaxi; its folder stays `Portaxi`.
+
+By hand:
+
 1. On GitHub click **Code → Download ZIP** and unpack it. Copy the inner `Portaxi` folder (the one with
    `Portaxi.toc` in it, not `Portaxi-main`) into `World of Warcraft\_forever_\Interface\AddOns\`
    (you should end up with `...\Interface\AddOns\Portaxi\Portaxi.toc`).
