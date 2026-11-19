@@ -235,4 +235,23 @@ T.test("MapPins: pins at the map position of the cell with a ring of one cell, b
   T.ok(not pin:IsShown(), "hidden with the map")
 end)
 
+T.test("/ptx field puts the taxi back on the map after Off; /ptx where stores what the position APIs return", function()
+  local sim, taxi = world()
+  taxi:slash("field")
+  T.eq(taxi.ns.Field.active(), true)
+  taxi.ns.UI.DutyBox.goOff() -- Off leaves the switch on
+  T.eq({ taxi.env.PortaxiCharDB.field, taxi.env.PortaxiCharDB.onDuty }, { true, false })
+  taxi:slash("field")
+  T.eq(taxi.ns.Field.active(), true, "back on the map, not switched off")
+  taxi:slash("field")
+  T.eq(taxi.env.PortaxiCharDB.field, false)
+  sim:advance(1)
+  taxi:slash("where")
+  local w = taxi.env.PortaxiDB.where
+  T.eq(w.unitPosition, { 1060, 520, 0, 1 })
+  T.eq(w.position, { 1060, 520, 1 })
+  T.eq(w.cell, { 1050, 525 })
+  T.eq(w.field.blocker, "off")
+end)
+
 T.done()

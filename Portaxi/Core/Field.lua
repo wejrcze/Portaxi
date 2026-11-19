@@ -24,7 +24,7 @@
 -- Positions: UnitPosition("player") first, then C_Map (best map, map position, world position), as UI.Arrow.
 -- World N grows to the north, W to the west; inst is the instance (continent) ID from either source.
 -- Fires FIELD_CHANGED when the switch or the taxi's state on the map changes. /ptx field toggles the switch.
--- luacheck: read globals IsInInstance UnitAffectingCombat
+-- luacheck: read globals IsInInstance UnitAffectingCombat date
 
 local _, ns = ...
 local C = ns.Const
@@ -283,8 +283,11 @@ Field.REASONS = {
   position = "This client gives the addon no position.",
 }
 
+-- On the map means switched on and on duty: when the switch is on but duty is off (the duty box's Off button
+-- leaves the switch alone), /ptx field puts the taxi back on the map instead of switching it off.
 local function command()
-  Field.setOn(charDB().field ~= true)
+  local db = charDB()
+  Field.setOn(not (db.field == true and db.onDuty == true))
   local st = Field.status()
   if st.active then
     ns.say(L["Map on: riders near you who look for a ride see you on their map."])
@@ -296,3 +299,62 @@ local function command()
 end
 
 ns.commands.field = { fn = command, help = "taxi on the map while levelling: on or off" }
+
+-- /ptx where: what the position APIs really return here (plan §5 F1-F3; /ptx diag only sees that they exist).
+-- Prints and stores PortaxiDB.where: UnitPosition, the C_Map map and world positions, the way back from the
+-- world position to the map (what the world map pins use) and why the taxi is or is not on the map.
+local function fmt(...)
+  local out = {}
+  for i = 1, select("#", ...) do
+    local v = select(i, ...)
+    out[i] = type(v) == "number" and ("%.4f"):format(v):gsub("%.?0+$", "") or tostring(v)
+  end
+  return table.concat(out, ", ")
+end
+
+local function where()
+  local w = { at = date("%Y-%m-%d %H:%M:%S") }
+  local zone, sub = call(ns.api("GetZoneText")), call(ns.api("GetSubZoneText"))
+  w.zone, w.subzone = zone, sub
+  w.instance = { call(ns.api("IsInInstance")) }
+  w.combat = inCombat()
+  w.unitPosition = { call(ns.api("UnitPosition"), "player") }
+  local mapId = call(ns.api("C_Map.GetBestMapForUnit"), "player")
+  w.mapId = mapId
+  local pos = mapId and call(ns.api("C_Map.GetPlayerMapPosition"), mapId, "player")
+  if type(pos) == "table" then
+    w.mapPos = { pos.x, pos.y }
+    if type(pos.GetXY) == "function" then
+      w.mapPos = { pos:GetXY() }
+    end
+    local inst, world = call(ns.api("C_Map.GetWorldPosFromMapPos"), mapId, pos)
+    w.mapWorld = { inst, type(world) == "table" and world.x or nil, type(world) == "table" and world.y or nil }
+  end
+  local n, wy, inst = Field.position()
+  w.position = { n, wy, inst }
+  if n then
+    w.cell = { Field.cell(n, wy) }
+    local make = ns.api("CreateVector2D")
+    local back, bpos = call(ns.api("C_Map.GetMapPosFromWorldPos"), inst, make and make(n, wy) or { x = n, y = wy },
+      mapId)
+    w.backToMap = { back, type(bpos) == "table" and bpos.x or nil, type(bpos) == "table" and bpos.y or nil }
+  end
+  local db = charDB()
+  local st = Field.status()
+  w.field = { on = st.on, onDuty = db.onDuty == true, blocker = st.blocker or "none (on the map)",
+              sent = st.sent and fmt(st.sent.inst, st.sent.n, st.sent.w, st.sent.busy) or nil }
+  if type(PortaxiDB) == "table" then
+    PortaxiDB.where = w
+  end
+  ns.say(("where: %s / %s · map %s · instance %s · combat %s"):format(tostring(zone), tostring(sub),
+    tostring(mapId), fmt(unpack(w.instance)), tostring(w.combat)))
+  ns.say("UnitPosition: " .. fmt(unpack(w.unitPosition)))
+  ns.say("map position: " .. (w.mapPos and fmt(unpack(w.mapPos)) or "none") .. " -> world (inst, n, w): "
+    .. (w.mapWorld and fmt(unpack(w.mapWorld)) or "none"))
+  ns.say("used: " .. (n and fmt(n, wy, inst) or "none") .. (w.cell and (" · cell " .. fmt(unpack(w.cell))) or "")
+    .. " · back to map: " .. (w.backToMap and fmt(unpack(w.backToMap)) or "none"))
+  ns.say(("map switch %s · duty %s · %s%s"):format(tostring(st.on), tostring(db.onDuty == true),
+    st.blocker or "on the map", w.field.sent and (" · last SPOT " .. w.field.sent) or ""))
+end
+
+ns.commands.where = { fn = where, help = "show what the position APIs return here (taxi on the map)" }

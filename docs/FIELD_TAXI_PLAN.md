@@ -66,6 +66,11 @@ zůstane funkční.
 
 ## 5. Neověřeno ve hře
 
+**2026-11-19 (`/ptx diag`, 0.2.0, mág 42 v Rog'maru, Riverglades, mapId 2548):** všechna API z tabulky na klientu
+**existují** (`UnitPosition`, `C_Map.GetWorldPosFromMapPos`, `C_Map.GetMapPosFromWorldPos`, `CreateVector2D`,
+`IsInInstance`, `UnitAffectingCombat`, `WorldMapFrame.ScrollContainer.Child`). Co vracejí, diag nevidí: na to je
+`/ptx where` (uloží `PortaxiDB.where`), spustit venku mimo hospodu.
+
 | # | Co | Když to nejde |
 |---|---|---|
 | F1 | `UnitPosition("player")` mimo instanci, nebo `C_Map.GetWorldPosFromMapPos` (stejné jako šipka). | Mág se na mapu nedostane; DutyBox řekne proč. |

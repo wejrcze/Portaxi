@@ -202,6 +202,7 @@ Test tools from the development phase (they log to `PortaxiDB.probe`; you do not
 | `/ptx opentrade` | Open a trade with your target from a timer. |
 | `/ptx trade <copper>` | Try to set gold in the next trade through the API (forbidden on Forever). |
 | `/ptx tradefield <copper>` | Try to fill the trade window's gold field in the next trade (forbidden on Forever). |
+| `/ptx where` | Show what the position APIs return where you stand (taxi on the map); saved to `PortaxiDB.where`. |
 | `/ptx probe [clear]` | Show the last test results, or clear them. |
 
 ## Known limitations
