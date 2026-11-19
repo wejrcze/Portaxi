@@ -23,6 +23,9 @@ soon as two players have it installed.
   *Where?* asks /who for you, *Invite* sends the mage a group invite and a whisper with your city.
 - **Come-to-you portal.** Sitting in an inn or a city? The mage uses a *Scroll of Liminal Passage*, appears
   next to you and opens the portal on the spot. You don't walk anywhere.
+- **Taxis near you on the map.** Out questing? Mages levelling nearby show up as pins on your world map and first
+  in Browse, with how far they are and how long the walk takes. Click to book a pickup.
+- **An arrow shows the way.** During a ride, a small arrow points to the other player with their name and distance.
 - **A ride panel walks you through it**: who's coming, what to do next, how much to pay.
 
 ## For mages: earn gold with your portals
@@ -41,6 +44,20 @@ soon as two players have it installed.
   window can stay closed.
 - **The Portaxi button.** One keybind (`/ptx key F`) for everything you need to cast: the scroll, then the
   portal. ForeverPortaxi gets the button ready and you press it.
+- **Earn while you level.** Switch on *Map* in the duty box and riders near you find you on their world map.
+
+## Inn hop: jump to any inn, not just the capitals
+
+Mages can use a *Scroll of Liminal Passage* to teleport to a party member resting in an inn. Inn hop finds that
+party member for you.
+
+- **For mages.** The **Hop** tab lists every town and city where a host rests right now. Click **Hop here**, the
+  host accepts, you click the Portaxi button and you're there. Crossroads, Booty Bay, Gadgetzan, wherever.
+- **For everyone else: host a mage.** Click **Hosting** on the Ride tab while you rest. When a mage asks, you get a
+  raid warning and click **Accept**; the mage pops in next to you and leaves the group again. It's free, and
+  it's off until you switch it on.
+- **No host in that town?** Search a town with an inn: ForeverPortaxi asks /who, lists the players in that town
+  first, and **Ask** whispers one of them for an invite.
 
 ## Safe by design
 
@@ -60,8 +77,9 @@ soon as two players have it installed.
    **Driving (mage):** open the *Drive* tab, set your prices, bind the Portaxi button with `/ptx key F` and
    click *Go on duty*.
 
-`/ptx` lists all commands. The useful ones: `/ptx show` (window), `/ptx box` (duty box), `/ptx chat` (reading
-chat on/off), `/ptx key <KEY>` (Portaxi button), `/ptx ride cancel` (cancel a ride).
+`/ptx` lists all commands. The useful ones: `/ptx show` (window), `/ptx hop` (Hop tab), `/ptx host` (hosting
+on/off), `/ptx box` (duty box), `/ptx field` (map on/off), `/ptx key <KEY>` (Portaxi button), `/ptx ride cancel`
+(cancel a ride).
 
 **Never miss an update.** When someone on the network runs a newer version, you get one line in chat. After you
 update, a *What's new* window shows what changed (`/ptx news` opens it again). The addon never downloads
@@ -69,12 +87,14 @@ anything by itself.
 
 ## Beta notes
 
-This is the first public beta. The more mages go on duty, the better it gets, so tell your mage friends.
+This is a public beta. The more mages go on duty and the more players host, the better it gets, so tell your
+friends.
 
 - **Mages only for now.** Warlock summons are next.
 - **You type the trade gold yourself.** WoW Forever doesn't let any addon put gold into a trade. The ride panel
   shows the exact amount.
 - **English game client.** The end of a ride is detected by the English city name.
+- **Inn hop is brand new.** It hasn't had many real hops yet; tell us how it goes.
 - Some steps haven't been tried on every setup yet. If something looks off, `/ptx diag` saves what the addon
   sees. Please attach it to a report.
 

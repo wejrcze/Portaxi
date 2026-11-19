@@ -132,6 +132,29 @@ for, warnings such as "The rider offers 1g of 3g. Do not accept yet.", and the f
 *Open trade* if your client blocks the automatic step. After the ride, Portaxi leaves the two-person group
 it formed.
 
+## Inn hop (mages, and hosts of any class)
+
+A mage with a *Scroll of Liminal Passage* can teleport to any party member who rests in an inn or a city, while
+the mage rests too. Inn hop finds such a **host** for you, so you can jump to any town with an inn, not only to the
+capitals your portals reach.
+
+**Hosting (any class).** Click **Hosting** at the top right of the Ride tab (or `/ptx host`). While you rest in an
+inn or a city and are not in a group, Portaxi tells the network where you rest (zone and town only). When a mage
+asks for a hop, you get a raid warning and a small window: **Accept** or **Decline** within 30 seconds. After you
+accept, Portaxi accepts the mage's group invite for you (that mage only), the mage teleports to you, and the mage
+leaves the group. Hosting is free and off by default; stop it with the same button.
+
+**Hopping (mage).** The **Hop** tab (`/ptx hop`) appears when you carry scrolls. It shows the towns and cities where
+hosts rest right now; click **Hop here**. When the host accepts, Portaxi invites them, arms the Portaxi button with
+the scroll on the host, and you click it. The hop ends when the scroll has brought you over. You can ask the same
+host again after a minute.
+
+**No host there?** Type a town with an inn (e.g. *The Crossroads*) or a zone and click **Search**: Portaxi asks /who,
+lists players in that town first, then players in other towns with an inn (marked *(inn)*), six per page. **Ask**
+whispers a player to invite you. Accept the invite yourself; once you are in their group, the Portaxi button gets the
+scroll. Portaxi cannot see whether such a player rests: if the scroll fails ("Invalid target"), they are not resting.
+Portaxi knows the towns with an inn of the original world and learns new ones wherever you or a host rest.
+
 ## Fair play
 
 - **Cancel for free** until the travel starts. A rider who cancels a Come-to-you ride after the scroll was used
@@ -162,6 +185,8 @@ On its own it:
 - reads your character (class, portals, runes, scrolls, resting, place, gold) and talks on the hidden channel,
   including its version number;
 - sends the party invite (taxi), and accepts the invite of the matched taxi and nobody else (rider);
+- with *Hosting* on, tells the hidden channel where you rest; after you click *Accept*, accepts that mage's invite
+  (Inn hop host);
 - with *Map* on, sends your position rounded to about 75 yards to the hidden channel while you are out in the
   world (taxi);
 - reads public chat for taxi requests while you are on duty (it invites and whispers only when you click *Invite*);
@@ -184,6 +209,8 @@ It never:
 | `/ptx box` | Lock or unlock the duty box, or show it again after you closed it. |
 | `/ptx field` | Turn *Map* on or off: be found on riders' maps while you level (taxi). |
 | `/ptx chat` | Turn reading taxi requests from public chat on or off (on by default). |
+| `/ptx host` | Turn Inn hop hosting on or off (off by default). |
+| `/ptx hop` | Open the Hop tab (mages with a Scroll of Liminal Passage). |
 | `/ptx key <KEY>` | Bind a key to the Portaxi button; without a key, clear it. |
 | `/ptx ride [cancel]` | Show the active ride, or cancel it. |
 | `/ptx version` | Show your version and the newest one seen on the network. |
@@ -204,6 +231,8 @@ Test tools from the development phase (they log to `PortaxiDB.probe`; you do not
 | `/ptx tradefield <copper>` | Try to fill the trade window's gold field in the next trade (forbidden on Forever). |
 | `/ptx where` | Show what the position APIs return where you stand (taxi on the map); saved to `PortaxiDB.where`. |
 | `/ptx mapself` | See yourself on the map and in Browse as riders do (this session; you cannot book yourself). |
+| `/ptx who [timer] <filter>` | Inn hop: /who from the addon (from a timer it is blocked). |
+| `/ptx scroll` | Inn hop: watch the next Scroll of Liminal Passage for 120 s; in a group, arm it on party1. |
 | `/ptx probe [clear]` | Show the last test results, or clear them. |
 
 ## Known limitations
@@ -217,6 +246,9 @@ Test tools from the development phase (they log to `PortaxiDB.probe`; you do not
 - **Map not verified in game yet**: world positions (`UnitPosition`, `C_Map`) and pins on the world map on
   Forever. Without positions there is no map at all; without the world map canvas there are no pins, but Browse
   still lists the taxis near you.
+- **Inn hop not verified in game yet** with two players: hosting, the hop request and the invite accepted for the
+  host. Verified: the scroll's cast (1 s, used only when it works), the Portaxi button with the scroll on party1, and
+  /who from a click. The towns with an inn come from the original world and are not checked on Forever.
 - English interface only. The end of a ride is detected by the English city name, so other client languages
   may not finish a ride on their own.
 - Thunder Bluff portals are learned at level 50.
