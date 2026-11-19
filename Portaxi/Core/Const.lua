@@ -73,6 +73,53 @@ ns.Const = {
 
   SECURE_BUTTON = "PortaxiNextButton", -- global name, so players can /click it from a macro or key
 
+  -- Inn hop (D20): towns with an inn outside the capitals, as the client names them (zone, town = subzone).
+  -- From the original game's world, not checked on Forever yet; places where the player or a host rests are learned
+  -- on top of this list (PortaxiDB.inns, Who.isInn). fac: "Horde", "Alliance" or "" for neutral towns.
+  INNS = {
+    { zone = "Durotar", town = "Razor Hill", fac = "Horde" },
+    { zone = "Mulgore", town = "Bloodhoof Village", fac = "Horde" },
+    { zone = "Tirisfal Glades", town = "Brill", fac = "Horde" },
+    { zone = "The Barrens", town = "The Crossroads", fac = "Horde" },
+    { zone = "The Barrens", town = "Camp Taurajo", fac = "Horde" },
+    { zone = "The Barrens", town = "Ratchet", fac = "" },
+    { zone = "Silverpine Forest", town = "The Sepulcher", fac = "Horde" },
+    { zone = "Hillsbrad Foothills", town = "Tarren Mill", fac = "Horde" },
+    { zone = "Hillsbrad Foothills", town = "Southshore", fac = "Alliance" },
+    { zone = "Stonetalon Mountains", town = "Sun Rock Retreat", fac = "Horde" },
+    { zone = "Stonetalon Mountains", town = "Stonetalon Peak", fac = "Alliance" },
+    { zone = "Ashenvale", town = "Splintertree Post", fac = "Horde" },
+    { zone = "Ashenvale", town = "Astranaar", fac = "Alliance" },
+    { zone = "Thousand Needles", town = "Freewind Post", fac = "Horde" },
+    { zone = "Desolace", town = "Shadowprey Village", fac = "Horde" },
+    { zone = "Desolace", town = "Nijel's Point", fac = "Alliance" },
+    { zone = "Arathi Highlands", town = "Hammerfall", fac = "Horde" },
+    { zone = "Swamp of Sorrows", town = "Stonard", fac = "Horde" },
+    { zone = "Stranglethorn Vale", town = "Grom'gol Base Camp", fac = "Horde" },
+    { zone = "Stranglethorn Vale", town = "Booty Bay", fac = "" },
+    { zone = "Dustwallow Marsh", town = "Brackenwall Village", fac = "Horde" },
+    { zone = "Dustwallow Marsh", town = "Theramore Isle", fac = "Alliance" },
+    { zone = "Feralas", town = "Camp Mojache", fac = "Horde" },
+    { zone = "Feralas", town = "Feathermoon Stronghold", fac = "Alliance" },
+    { zone = "Badlands", town = "Kargath", fac = "Horde" },
+    { zone = "The Hinterlands", town = "Revantusk Village", fac = "Horde" },
+    { zone = "The Hinterlands", town = "Aerie Peak", fac = "Alliance" },
+    { zone = "Tanaris", town = "Gadgetzan", fac = "" },
+    { zone = "Winterspring", town = "Everlook", fac = "" },
+    { zone = "Silithus", town = "Cenarion Hold", fac = "" },
+    { zone = "Eastern Plaguelands", town = "Light's Hope Chapel", fac = "" },
+    { zone = "Elwynn Forest", town = "Goldshire", fac = "Alliance" },
+    { zone = "Dun Morogh", town = "Kharanos", fac = "Alliance" },
+    { zone = "Teldrassil", town = "Dolanaar", fac = "Alliance" },
+    { zone = "Westfall", town = "Sentinel Hill", fac = "Alliance" },
+    { zone = "Loch Modan", town = "Thelsamar", fac = "Alliance" },
+    { zone = "Redridge Mountains", town = "Lakeshire", fac = "Alliance" },
+    { zone = "Darkshore", town = "Auberdine", fac = "Alliance" },
+    { zone = "Duskwood", town = "Darkshire", fac = "Alliance" },
+    { zone = "Wetlands", town = "Menethil Harbor", fac = "Alliance" },
+    { zone = "Riverglades", town = "Rog'mar", fac = "Horde" }, -- Forever; resting seen 2026-11-19 (/ptx scroll)
+  },
+
   -- What the Forever client lets an addon do in a trade (gate G2, 2026-11-18, with a real player).
   TRADE = {
     SET_MONEY_API = false,   -- C_TradeInfo.SetTradeMoney -> ADDON_ACTION_FORBIDDEN "UNKNOWN()"; never call it

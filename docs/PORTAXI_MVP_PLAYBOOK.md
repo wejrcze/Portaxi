@@ -394,7 +394,14 @@ Who.search(zone) -> ok, err   -- from a click only (C_FriendList.SendWho, hardwa
 Who.ask(key)                  -- whisper template (English); once that player has us in the group within T.INVITE
                               -- (the mage accepted the invite by hand, R4) a ride { svc = "HOP", peer.noAddon = true }
                               -- starts: no STATE, the scroll armed without the host's resting; the mage leaves by hand
-Who.results() -> list, zone ; Who.awaiting() -> { [key] = time }   -- events WHO_RESULTS(list, zone), WHO_CHANGED
+Who.results() -> list, zone, town ; Who.awaiting() -> { [key] = time }   -- WHO_RESULTS(list, zone, town), WHO_CHANGED
+  -- list entries { key, raw, level, class, race, area, inn, here }: area is the subzone on Forever (in game
+  --   2026-11-19); order: here (in the town searched for), then towns with an inn, then the rest, each by key
+Who.search(query)             -- a town with an inn is searched by its zone (Who.resolve), anything else as a zone
+Who.isInn(area) ; Who.resolve(query) -> zone, town|nil ; Who.learn(zone, sub)
+  -- towns with an inn = Const.INNS (the original world, unverified on Forever) + PortaxiDB.inns[lower(town)] =
+  --   { zone, town, at }, learned while we rest outside a capital and from hosts' HOST with city ""
+-- HopTab /who list: 6 rows a page with < > and "1-6 of 50"; "(inn)" after the area
 -- UI (UI/HopTab.lua): MainFrame tab "hop" while HopTab.wanted(profile) (MAGE with scrolls); HopTab.view(profile) ->
 --   { status, pauses, places = { label, city, hosts, enabled }, empty, request, requestWarn, who, whoEmpty, whoNote };
 --   "Hop here" = Hop.request(first host of the place); Search = Who.search(zone box); Ask = Who.ask

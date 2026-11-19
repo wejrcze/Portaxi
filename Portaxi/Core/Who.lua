@@ -1,8 +1,14 @@
 -- Who: the /who fallback of Inn hop (D20) for hosts without Portaxi. Game glue.
 -- Contract: docs/PORTAXI_MVP_PLAYBOOK.md §2 "Inn hop (D20)". Plan: docs/INN_HOP_PLAN.md §2.
---   Who.search(zone) -> true | nil, err   from a click only (C_FriendList.SendWho needs a hardware event; probe
---                                         2026-11-19); err "zone", "cooldown", "who"; results in WHO_RESULTS
---   Who.results() -> list, zone           the last answer: { key, raw, level, class, race, area }, own key left out
+--   Who.search(query) -> true | nil, err  from a click only (C_FriendList.SendWho needs a hardware event; probe
+--                                         2026-11-19); query = a zone, or a town with an inn (searched by its zone);
+--                                         err "zone", "cooldown", "who"; results in WHO_RESULTS
+--   Who.results() -> list, zone, town     the last answer: { key, raw, level, class, race, area, inn, here }, own key
+--                                         left out; area is the subzone on Forever (in game 2026-11-19); here = in the
+--                                         town searched for; order: here, then inn towns, then the rest, each by key
+--   Who.isInn(area) -> bool ; Who.resolve(query) -> zone, town | nil ; Who.learn(zone, sub)
+--                                         towns with an inn: Const.INNS plus places where we or a host rested
+--                                         (PortaxiDB.inns, keyed by the lower-case town)
 --   Who.ask(key) -> true | nil, err       whispers the request template; err "who" (not in the results), "busy"
 --   Who.awaiting() -> { [key] = time }    players asked within T.INVITE
 -- An invite from an asked player is accepted by the mage's own click (R4); once that player is in the group and no
@@ -22,7 +28,8 @@ local ANSWER_WAIT = 10 -- a WHO_LIST_UPDATE later than this after our search is 
 local WHISPER = "Hi! I'm a mage with a Scroll of Liminal Passage. Could you invite me to your group? I'll teleport "
   .. "to you if you stay rested in the inn, then leave. Thanks!"
 
-local results, resultsZone = {}, nil
+local results, resultsZone, resultsTown = {}, nil, nil
+local wantTown = nil
 local pendingZone, searchedAt = nil, nil
 local asked = {}       -- key -> { raw, at }
 local seq = nil
@@ -37,13 +44,74 @@ local function activeRide()
   return type(R) == "table" and type(R.current) == "function" and R.current() or nil
 end
 
+-- Inns ------------------------------------------------------------------------------------------------
+
+local function lower(s)
+  return type(s) == "string" and s:lower() or ""
+end
+
+local function learned()
+  if type(PortaxiDB) ~= "table" then
+    return {}
+  end
+  PortaxiDB.inns = type(PortaxiDB.inns) == "table" and PortaxiDB.inns or {}
+  return PortaxiDB.inns
+end
+
+local function isCapital(zone)
+  for _, city in pairs(C.CITY) do
+    if city.name == zone then
+      return true
+    end
+  end
+  return false
+end
+
+-- The inn town record { zone, town } for a town name (Const.INNS first, then the learned ones), or nil.
+local function innTown(name)
+  local key = lower(name)
+  if key == "" then
+    return nil
+  end
+  for _, inn in ipairs(C.INNS or {}) do
+    if lower(inn.town) == key then
+      return inn
+    end
+  end
+  return learned()[key]
+end
+
+function Who.isInn(area)
+  return innTown(area) ~= nil
+end
+
+-- A query that names an inn town is searched by its zone; anything else is taken as a zone.
+function Who.resolve(query)
+  local inn = innTown(query)
+  if inn then
+    return inn.zone, inn.town
+  end
+  return query, nil
+end
+
+-- Remembers a resting place outside the capitals (our own, or a host's HOST) as a town with an inn.
+function Who.learn(zone, sub)
+  if type(zone) ~= "string" or zone == "" or type(sub) ~= "string" or sub == "" or sub == zone
+      or isCapital(zone) or innTown(sub) then
+    return false
+  end
+  learned()[lower(sub)] = { zone = zone, town = sub, at = time() }
+  return true
+end
+
 -- Search ----------------------------------------------------------------------------------------------
 
-function Who.search(zone)
-  zone = type(zone) == "string" and zone:gsub('"', ""):match("^%s*(.-)%s*$") or ""
-  if zone == "" then
+function Who.search(query)
+  query = type(query) == "string" and query:gsub('"', ""):match("^%s*(.-)%s*$") or ""
+  if query == "" then
     return nil, "zone"
   end
+  local zone, town = Who.resolve(query)
   local t = now()
   if searchedAt and t - searchedAt < SEARCH_GAP then
     return nil, "cooldown"
@@ -56,7 +124,7 @@ function Who.search(zone)
   if not ok then
     return nil, "who"
   end
-  searchedAt, pendingZone = t, zone
+  searchedAt, pendingZone, wantTown = t, zone, town
   return true
 end
 
@@ -74,11 +142,20 @@ local function readResults()
       local key = ns.playerKey(w.fullName)
       if not ns.sameName(key, me) then
         out[#out + 1] = { key = key, raw = w.fullName, level = w.level, class = w.classStr, race = w.raceStr,
-                          area = w.area }
+                          area = w.area, inn = Who.isInn(w.area),
+                          here = wantTown ~= nil and lower(w.area) == lower(wantTown) }
       end
     end
   end
-  table.sort(out, function(a, b) return a.key < b.key end)
+  local function rank(e)
+    return e.here and 0 or (e.inn and 1 or 2)
+  end
+  table.sort(out, function(a, b)
+    if rank(a) ~= rank(b) then
+      return rank(a) < rank(b)
+    end
+    return a.key < b.key
+  end)
   return out
 end
 
@@ -86,12 +163,12 @@ local function onWhoList()
   if not (pendingZone and searchedAt and now() - searchedAt <= ANSWER_WAIT) then
     return -- someone else's /who (the player, or ChatOffers' Where?)
   end
-  results, resultsZone, pendingZone = readResults(), pendingZone, nil
-  ns.fire("WHO_RESULTS", results, resultsZone)
+  results, resultsZone, resultsTown, pendingZone = readResults(), pendingZone, wantTown, nil
+  ns.fire("WHO_RESULTS", results, resultsZone, resultsTown)
 end
 
 function Who.results()
-  return results, resultsZone
+  return results, resultsZone, resultsTown
 end
 
 -- Ask -------------------------------------------------------------------------------------------------
@@ -183,3 +260,13 @@ function Who.start()
 end
 
 ns.on("READY", Who.start)
+ns.on("PROFILE_CHANGED", function(profile)
+  if type(profile) == "table" and profile.resting then
+    Who.learn(profile.zone, profile.subzone)
+  end
+end)
+ns.on("NET_MSG", function(msg)
+  if type(msg) == "table" and msg.type == "HOST" and msg.city == "" then
+    Who.learn(msg.zone, msg.sub)
+  end
+end)

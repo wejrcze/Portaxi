@@ -18,7 +18,7 @@ local C = W.COLOR
 
 local PAGE_W = 352
 local ROWS, ROW_H = 5, 34
-local WHO_ROWS = 4
+local WHO_ROWS = 6
 local POPUP_NAME = "PortaxiHopRequest"
 
 local Y = { status = 0, pauses = -18, placesHead = -48, places = -68, request = -244, whoHead = -276,
@@ -169,7 +169,15 @@ function H.build(page)
   end
   ui.whoNote = W.label(page, "GameFontHighlightSmall", C.MUTED)
   ui.whoNote:SetPoint("TOPLEFT", ui.who, "BOTTOMLEFT", 0, -4)
-  ui.whoNote:SetWidth(PAGE_W)
+  ui.whoNote:SetWidth(PAGE_W - 110)
+  ui.whoNext = W.button(page, ">", 24, 18, "ghost")
+  ui.whoNext:SetPoint("TOPRIGHT", ui.who, "BOTTOMRIGHT", 0, -3)
+  ui.whoNext:SetScript("OnClick", function() H.whoPage(1) end)
+  ui.whoPrev = W.button(page, "<", 24, 18, "ghost")
+  ui.whoPrev:SetPoint("RIGHT", ui.whoNext, "LEFT", -2, 0)
+  ui.whoPrev:SetScript("OnClick", function() H.whoPage(-1) end)
+  ui.whoPos = W.label(page, "GameFontHighlightSmall", C.MUTED, "RIGHT")
+  ui.whoPos:SetPoint("RIGHT", ui.whoPrev, "LEFT", -6, 0)
   return page
 end
 
@@ -207,10 +215,16 @@ local function requestText(st)
   return "", false
 end
 
+-- "Zorg Axehand · 22 Warrior · The Crossroads (inn)": players in a town with an inn are marked (Who.isInn).
 local function whoText(entry)
-  return ("%s · %s %s · %s"):format(entry.key, tostring(entry.level or "?"), tostring(entry.class or ""),
-    tostring(entry.area or ""))
+  local area = tostring(entry.area or "")
+  if entry.inn then
+    area = area .. " " .. L["(inn)"]
+  end
+  return ("%s · %s %s · %s"):format(entry.key, tostring(entry.level or "?"), tostring(entry.class or ""), area)
 end
+
+H.whoFirst = 1 -- index of the first /who result shown (pages of WHO_ROWS)
 
 function H.view(profile)
   local hop = hopOf(profile) or { hopPauses = {}, HOP = false }
@@ -226,9 +240,13 @@ function H.view(profile)
     list[i] = { label = place.label, city = place.city, hosts = hostsText(place), entry = place,
                 enabled = hop.HOP == true and not busy }
   end
-  local whoList, whoZone = {}, nil
+  local whoList, whoZone, whoTown = {}, nil, nil
   if module("Who", "results") then
-    whoList, whoZone = ns.Who.results()
+    whoList, whoZone, whoTown = ns.Who.results()
+  end
+  whoList = whoList or {}
+  if H.whoFirst > #whoList then
+    H.whoFirst = 1
   end
   local asked = module("Who", "awaiting") and ns.Who.awaiting() or {}
   -- Asking takes a while (whisper, then their invite), so it is fine on the way to the inn: only resting may be
@@ -239,11 +257,15 @@ function H.view(profile)
       canAsk = false
     end
   end
-  local who = {}
-  for i, entry in ipairs(whoList or {}) do
+  local who, inns = {}, 0
+  for i, entry in ipairs(whoList) do
     who[i] = { text = whoText(entry), entry = entry, asked = asked[entry.key] ~= nil,
                enabled = profile ~= nil and canAsk and not busy }
+    if entry.inn then
+      inns = inns + 1
+    end
   end
+  local last = math.min(#who, H.whoFirst + WHO_ROWS - 1)
   local request, warn = requestText(st)
   return {
     status = L["Scrolls: %d · resting: %s"]:format(tonumber(profile and profile.scrolls) or 0,
@@ -255,10 +277,14 @@ function H.view(profile)
     request = request,
     requestWarn = warn,
     who = who,
-    whoEmpty = #who == 0 and (whoZone and L["Nobody found in %s."]:format(whoZone)
-      or L["Type a zone, for example The Barrens, and click Search."]) or nil,
+    whoFirst = H.whoFirst,
+    whoPos = #who > 0 and L["%d-%d of %d"]:format(H.whoFirst, last, #who) or "",
+    whoPrev = H.whoFirst > 1,
+    whoNext = last < #who,
+    whoEmpty = #who == 0 and (whoZone and L["Nobody found in %s."]:format(whoTown or whoZone)
+      or L["Type a town with an inn or a zone, e.g. The Crossroads, and click Search."]) or nil,
     whoNote = next(asked) and L["Asked players invite you; accept the invite yourself, then click the Portaxi button."]
-      or "",
+      or (#who > 0 and L["%d in a town with an inn, listed first."]:format(inns) or ""),
   }
 end
 
@@ -290,7 +316,7 @@ function H.refresh(profile)
   ui.request:SetText(v.request)
   W.setColor(ui.request, v.requestWarn and C.WARN or C.MUTED)
   for i, row in ipairs(ui.whoRows) do
-    local w = v.who[i]
+    local w = v.who[v.whoFirst + i - 1]
     row.entry = w and w.entry
     row:SetShown(w ~= nil)
     if w then
@@ -302,6 +328,21 @@ function H.refresh(profile)
   ui.whoEmpty:SetShown(v.whoEmpty ~= nil)
   ui.whoEmpty:SetText(v.whoEmpty or "")
   ui.whoNote:SetText(v.whoNote)
+  ui.whoPos:SetText(v.whoPos)
+  ui.whoPrev:SetShown(v.whoPrev or v.whoNext)
+  ui.whoNext:SetShown(v.whoPrev or v.whoNext)
+  W.setEnabled(ui.whoPrev, v.whoPrev)
+  W.setEnabled(ui.whoNext, v.whoNext)
+end
+
+-- Pages through the /who results by WHO_ROWS.
+function H.whoPage(dir)
+  local list = module("Who", "results") and ns.Who.results() or {}
+  local first = H.whoFirst + dir * WHO_ROWS
+  if first >= 1 and first <= #list then
+    H.whoFirst = first
+  end
+  H.redraw()
 end
 
 function H.redraw()
@@ -342,6 +383,10 @@ local function redrawIfVisible()
     H.redraw()
   end
 end
+
+ns.on("WHO_RESULTS", function()
+  H.whoFirst = 1 -- a new search starts on its first page
+end)
 
 for _, event in ipairs({ "HOSTS_CHANGED", "HOP_CHANGED", "HOP_RESULT", "WHO_RESULTS", "WHO_CHANGED", "RIDE_STARTED",
   "RIDE_STATE" }) do

@@ -89,4 +89,42 @@ T.test("an ask expires after T.INVITE", function()
   T.eq(wow.ns.Who.awaiting(), {})
 end)
 
+-- Towns with an inn ----------------------------------------------------------------------------------
+
+T.test("a town with an inn is searched by its zone; players there come first, then inn towns, then the rest", function()
+  local wow, fl, answer = client()
+  T.eq({ wow.ns.Who.resolve("the crossroads") }, { "The Barrens", "The Crossroads" })
+  T.eq({ wow.ns.Who.resolve("Ashenvale") }, { "Ashenvale", nil })
+  T.eq({ wow.ns.Who.resolve("Crossroads") }, { "Crossroads", nil }, "a partial name is taken as a zone")
+  T.ok(wow.ns.Who.search("The Crossroads"))
+  T.eq(fl.sent[#fl.sent], 'z-"The Barrens"')
+  answer({
+    { fullName = "Amy Field", level = 20, classStr = "Hunter", area = "Camp Taurajo" },
+    { fullName = "Bob Road", level = 21, classStr = "Rogue", area = "Gold Road" },
+    { fullName = "Cid Inn", level = 22, classStr = "Priest", area = "The Crossroads" },
+  })
+  local list, zone, town = wow.ns.Who.results()
+  T.eq({ zone, town }, { "The Barrens", "The Crossroads" })
+  T.eq({ list[1].key, list[1].here, list[1].inn }, { "Cid Inn", true, true })
+  T.eq({ list[2].key, list[2].here, list[2].inn }, { "Amy Field", false, true }, "Camp Taurajo has an inn too")
+  T.eq({ list[3].key, list[3].inn }, { "Bob Road", false })
+  T.eq(#wow.errors, 0)
+end)
+
+T.test("resting places are learned: our own outside the capitals, and hosts' HOST at an inn", function()
+  local wow = client()
+  T.eq(wow.ns.Who.isInn("Sunnyglade"), false)
+  wow.ns.fire("PROFILE_CHANGED", { resting = true, zone = "Riverglades", subzone = "Sunnyglade" }, {})
+  T.eq(wow.ns.Who.isInn("sunnyglade"), true)
+  T.eq(wow.env.PortaxiDB.inns.sunnyglade.zone, "Riverglades")
+  T.eq({ wow.ns.Who.resolve("Sunnyglade") }, { "Riverglades", "Sunnyglade" })
+  wow.ns.fire("PROFILE_CHANGED", { resting = true, zone = "Orgrimmar", subzone = "Valley of Strength" }, {})
+  T.eq(wow.ns.Who.isInn("Valley of Strength"), false, "capital quarters are not inn towns")
+  wow.ns.fire("PROFILE_CHANGED", { resting = false, zone = "Durotar", subzone = "Senjin Village" }, {})
+  T.eq(wow.ns.Who.isInn("Senjin Village"), false, "only while resting")
+  wow.ns.fire("NET_MSG", { type = "HOST", fac = "Horde", lvl = 30, zone = "Azshara", sub = "Valormok", city = "",
+    free = true }, "Kim Forever", "Kim Forever")
+  T.eq(wow.ns.Who.isInn("Valormok"), true)
+end)
+
 T.done()

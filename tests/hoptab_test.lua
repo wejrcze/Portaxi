@@ -174,4 +174,40 @@ T.test("Decline answers HOPNO and closes the popup; no answer closes it after T.
   noErrors(wow)
 end)
 
+T.test("/who list: inn marks, six rows a page, paging; a new search starts on page one", function()
+  local mage = client()
+  local fl = { list = {} }
+  mage.env.C_FriendList = {
+    SendWho = function() end,
+    GetNumWhoResults = function() return #fl.list, #fl.list end,
+    GetWhoInfo = function(i) return fl.list[i] end,
+  }
+  for i = 1, 14 do
+    fl.list[i] = { fullName = ("P%02d Test"):format(i), level = 20 + i, classStr = "Warrior",
+                   area = i == 9 and "The Crossroads" or "Gold Road" }
+  end
+  mage:slash("hop")
+  local H = mage.ns.UI.HopTab
+  H.ui.zone:SetText("The Barrens")
+  H.ui.search:GetScript("OnClick")()
+  mage:fire("WHO_LIST_UPDATE")
+  T.eq(H.ui.whoRows[1].text:GetText(), "P09 Test · 29 Warrior · The Crossroads (inn)", "inn town first")
+  T.eq(H.ui.whoPos:GetText(), "1-6 of 14")
+  T.eq(H.ui.whoNote:GetText(), "1 in a town with an inn, listed first.")
+  T.ok(H.ui.whoNext:IsShown())
+  H.ui.whoNext:GetScript("OnClick")()
+  T.eq(H.ui.whoPos:GetText(), "7-12 of 14")
+  T.eq(H.ui.whoRows[1].text:GetText(), "P06 Test · 26 Warrior · Gold Road", "P09 moved up, so P06 is 7th")
+  H.ui.whoNext:GetScript("OnClick")()
+  T.eq(H.ui.whoPos:GetText(), "13-14 of 14")
+  T.ok(not H.ui.whoRows[3]:IsShown())
+  H.ui.whoNext:GetScript("OnClick")()
+  T.eq(H.ui.whoPos:GetText(), "13-14 of 14", "no page past the end")
+  mage:advance(6)
+  H.ui.search:GetScript("OnClick")()
+  mage:fire("WHO_LIST_UPDATE")
+  T.eq(H.ui.whoPos:GetText(), "1-6 of 14")
+  noErrors(mage)
+end)
+
 T.done()
