@@ -153,6 +153,9 @@ L["You are not resting: the scroll cannot reach you. Go back to an inn or a city
   "You are not resting: the scroll cannot reach you. Go back to an inn or a city."
 L["You are not resting: the scroll needs both of you in an inn or a city."] =
   "You are not resting: the scroll needs both of you in an inn or a city."
+L["The scroll failed (%s): both of you must be resting. Try again."] =
+  "The scroll failed (%s): both of you must be resting. Try again."
+L["The scroll did not take you to the rider. Try again."] = "The scroll did not take you to the rider. Try again."
 L["Automatic invite is off: click Invite."] = "Automatic invite is off: click Invite."
 L["Automatic accept is off: click Accept."] = "Automatic accept is off: click Accept."
 L["The trade did not open: click Open trade."] = "The trade did not open: click Open trade."
@@ -197,11 +200,11 @@ L["Busy: fighting or on a ride."] = "Busy: fighting or on a ride."
 L["Click: ride to %s"] = "Click: ride to %s"
 L["Asked %s for a ride to %s."] = "Asked %s for a ride to %s."
 L["Busy"] = "Busy"
+L["You"] = "You"
+L["This is you (test view)."] = "This is you (test view)."
 L["Map"] = "Map"
 L["On the map"] = "On the map"
 L["Taxi on the map"] = "Taxi on the map"
-L["You"] = "You"
-L["This is you (test view)."] = "This is you (test view)."
 L["While levelling: riders near you who look for a ride see you on their map."] =
   "While levelling: riders near you who look for a ride see you on their map."
 L["You are on the map."] = "You are on the map."

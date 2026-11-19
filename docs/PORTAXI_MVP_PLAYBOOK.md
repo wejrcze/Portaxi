@@ -304,8 +304,11 @@ Ride.manual(what)                              -- what: "invite" | "accept" | "t
 --     by name); no group within T.INVITE -> FAILED. Blocked/timeout -> caps.invite / caps.accept = "manual".
 --   rider sends STATE "RESTING" / "NOT_RESTING" on change (taxi side keeps ride.riderResting).
 --   COME: taxi arms Secure.set(scroll spec on peerUnit) only while riderResting; UNIT_SPELLCAST_START with
---     Const.SPELL.LIMINAL_PASSAGE (player on taxi side, peerUnit on rider side) -> EN_ROUTE; _SUCCEEDED -> ARRIVED;
---     _FAILED/_INTERRUPTED -> back to GROUPED.
+--     Const.SPELL.LIMINAL_PASSAGE (player on taxi side, peerUnit on rider side) -> EN_ROUTE; _FAILED/_INTERRUPTED
+--     -> back to GROUPED. _SUCCEEDED is no proof (it also fires on "Invalid target", probe 2026-11-19): the taxi
+--     goes ARRIVED only on LANDED (a scroll fewer in the bags, or the rider within interact distance >= 1 s after
+--     _SUCCEEDED); a UI error within 2 s of _SUCCEEDED (SCROLL_ERROR) or no LANDED within T.LANDING (12 s) -> back
+--     to GROUPED with ride.scrollError, the scroll armed again. The rider follows the taxi's STATE ARRIVED.
 --   PICK: GROUPED -> EN_ROUTE at once; ARRIVED when CheckInteractDistance(peerUnit, 2) (poll 1 s).
 --   ARRIVED (taxi) -> TRADING: ns.Trade.open(peerUnit). Rider follows STATE.
 --   TRADE_PAID(reqId, copper) on the taxi -> PAID: Secure.set(portal spec for dest), STATE "PAID" to the rider.

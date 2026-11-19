@@ -287,6 +287,11 @@ local function notes(r)
       and L["The rider is not resting: the scroll is off. You can cancel for free."]
       or L["You are not resting: the scroll cannot reach you. Go back to an inn or a city."]
   end
+  if r.svc == "COME" and r.role == "taxi" and r.state == "GROUPED" and r.scrollError then
+    out[#out + 1] = r.scrollError == "unconfirmed"
+      and L["The scroll did not take you to the rider. Try again."]
+      or L["The scroll failed (%s): both of you must be resting. Try again."]:format(r.scrollError)
+  end
   local c = caps()
   if r.svc == "COME" and r.role == "taxi" and rank <= 3 and r.state ~= "EN_ROUTE" and r.selfResting == false then
     out[#out + 1] = L["You are not resting: the scroll needs both of you in an inn or a city."]

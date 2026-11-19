@@ -82,24 +82,24 @@ local function checkMatch(rider, winner, loser, reqId, eta)
 end
 
 T.test("the faster ETA wins when the other is more than 15 s slower", function()
-  -- Aaron: COME eta 5 + 10 = 15, waited 10 min. Bert: eta 40 + 10 = 50, waited an hour.
+  -- Aaron: COME eta 5 + 1 = 6, waited 10 min. Bert: eta 40 + 1 = 41, waited an hour.
   local sim, rider, aaron, bert = world({ name = "Aaron", resp = { 5 }, waited = 600 },
     { name = "Bert", resp = { 40 }, waited = 3600 })
   local results, reqId = hailAndTake(sim, rider, aaron, bert)
   T.eq(#results, 1)
   T.eq(results[1][1], reqId)
   T.eq(results[1][2].key, "Aaron Forever")
-  checkMatch(rider, aaron, bert, reqId, 15)
+  checkMatch(rider, aaron, bert, reqId, 6)
   T.eq(#aaron.errors + #bert.errors + #rider.errors, 0)
 end)
 
 T.test("within the 15 s tie the longer-waiting taxi wins", function()
-  -- Aaron: eta 15, waited 10 min. Bert: eta 25 (within 15 s), waited an hour -> Bert.
+  -- Aaron: eta 6, waited 10 min. Bert: eta 16 (within 15 s), waited an hour -> Bert.
   local sim, rider, aaron, bert = world({ name = "Aaron", resp = { 5 }, waited = 600 },
     { name = "Bert", resp = { 15 }, waited = 3600 })
   local results, reqId = hailAndTake(sim, rider, aaron, bert)
   T.eq(results[1][2].key, "Bert Forever")
-  checkMatch(rider, bert, aaron, reqId, 25)
+  checkMatch(rider, bert, aaron, reqId, 16)
   T.eq(#aaron.errors + #bert.errors + #rider.errors, 0)
 end)
 

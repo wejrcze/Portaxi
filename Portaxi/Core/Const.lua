@@ -44,6 +44,7 @@ ns.Const = {
     INVITE = 60,        -- group must form within this
     PORTAL = 60,        -- portal stays open
     TRADE = 180,        -- ARRIVED/TRADING without payment this long -> the ride fails
+    LANDING = 12,       -- scroll SUCCEEDED without proof of the move this long -> back to GROUPED (2026-11-19)
     HELLO = 60,         -- HELLO period while on duty
     HELLO_JITTER = 10,  -- +- random jitter on the HELLO period
     HAIL_COOLDOWN = 10, -- max one HAIL per player per this many seconds
@@ -63,7 +64,7 @@ ns.Const = {
   HAIL_TIE = 15,  -- seconds of ETA counted as a tie
   ETA_PICK = 600, -- MVP estimate for a portal pickup walk, seconds
   RESP_DEFAULT = 30, -- seconds from request to TAKE until a taxi has its own history
-  CAST = { SCROLL = 10, PORTAL = 10 }, -- cast times in seconds, unverified on Forever
+  CAST = { SCROLL = 1, PORTAL = 10 }, -- cast times in seconds; SCROLL measured 1.0 s (2026-11-19), PORTAL unverified
 
   SECURE_BUTTON = "PortaxiNextButton", -- global name, so players can /click it from a macro or key
 

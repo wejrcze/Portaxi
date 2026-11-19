@@ -89,6 +89,9 @@ local function rideAt(role, state, svc)
     if state ~= "EN_ROUTE" then
       path[#path + 1] = come and { cast(taxi and "self" or "peer", "SCROLL", "SUCCEEDED", "g1"), 112 }
         or { ev("NEAR"), 112 }
+      if come then
+        path[#path + 1] = taxi and { ev("LANDED"), 112.5 } or { ev("PEER_STATE", { state = "ARRIVED" }), 112.5 }
+      end
       if not taxi and state ~= "ARRIVED" then
         path[#path + 1] = { ev("PEER_STATE", { state = "TRADING" }), 113 }
       end
@@ -149,7 +152,12 @@ T.test("taxi COME: group, rider rests -> scroll armed, cast, trade, paid -> port
   T.eq(ride.state, "EN_ROUTE")
   T.eq(names(acts), { "SEND:EN_ROUTE", "SECURE:nil" })
   ride, acts = R.step(ride, cast("self", "SCROLL", "SUCCEEDED", "g1"), 15)
+  T.eq(ride.state, "EN_ROUTE", "SUCCEEDED alone is no proof (it also fires on Invalid target)")
+  T.eq(ride.landing, 15)
+  T.eq(names(acts), {})
+  ride, acts = R.step(ride, ev("LANDED"), 15.5)
   T.eq(ride.state, "TRADING", "ARRIVED -> TRADING at once on the taxi")
+  T.eq(ride.landing, nil)
   T.eq(names(acts), { "SEND:ARRIVED", "SEND:TRADING", "TRADE_OPEN" })
   ride, acts = R.step(ride, ev("PAID", { copper = 30000 }), 20)
   T.eq(ride.state, "PAID")
@@ -181,6 +189,9 @@ T.test("rider COME: accepts the peer's invite, follows the taxi, leads DONE on r
   ride = R.step(ride, ev("PEER_STATE", { state = "EN_ROUTE" }), 3.1)
   T.eq(ride.state, "EN_ROUTE", "the taxi's EN_ROUTE is a no-op")
   ride, acts = R.step(ride, cast("peer", "SCROLL", "SUCCEEDED", "g1"), 13)
+  T.eq(ride.state, "EN_ROUTE", "the rider waits for the taxi's proof")
+  T.eq(names(acts), {})
+  ride, acts = R.step(ride, ev("PEER_STATE", { state = "ARRIVED" }), 13.5)
   T.eq(ride.state, "ARRIVED")
   T.eq(names(acts), {}, "no trade from the rider")
   ride = R.step(ride, ev("PEER_STATE", { state = "TRADING" }), 14)
@@ -314,7 +325,45 @@ T.test("scroll cast failed or interrupted -> back to GROUPED and re-armed; anoth
   T.eq(R.step(rider, ev("PEER_STATE", { state = "GROUPED" }), 104).state, "GROUPED", "rider follows the revert")
   local fromTaxi = R.step(rideAt("rider", "GROUPED"), ev("PEER_STATE", { state = "EN_ROUTE" }), 104)
   T.eq(fromTaxi.state, "EN_ROUTE", "rider follows EN_ROUTE when it cannot see the cast")
-  T.eq(R.step(fromTaxi, cast("peer", "SCROLL", "SUCCEEDED", "zz"), 114).state, "ARRIVED")
+  T.eq(R.step(fromTaxi, cast("peer", "SCROLL", "SUCCEEDED", "zz"), 114).state, "EN_ROUTE", "waits for the taxi")
+  T.eq(R.step(fromTaxi, ev("PEER_STATE", { state = "ARRIVED" }), 114).state, "ARRIVED")
+end)
+
+-- In-game probe 2026-11-19: a scroll on a rider who is not resting still fires UNIT_SPELLCAST_SUCCEEDED, then the
+-- UI error "Invalid target"; nothing moves and no scroll is used.
+T.test("scroll SUCCEEDED then Invalid target -> back to GROUPED, re-armed, the rider follows; no trade", function()
+  local ride = R.step(rideAt("taxi", "EN_ROUTE"), cast("self", "SCROLL", "SUCCEEDED", "g1"), 103)
+  T.eq(ride.state, "EN_ROUTE")
+  local back, acts = R.step(ride, ev("SCROLL_ERROR", { message = "Invalid target" }), 103.2)
+  T.eq(back.state, "GROUPED")
+  T.eq(back.scrollError, "Invalid target")
+  T.eq(back.landing, nil)
+  T.eq(names(acts), { "SEND:GROUPED", "SECURE:item:party1" }, "no TRADE_OPEN")
+  T.eq(R.step(back, ev("LANDED"), 104).state, "GROUPED", "a late LANDED after the revert is ignored")
+  T.ok(R.canCancel(back), "the taxi may cancel again")
+  local again = R.step(R.step(back, cast("self", "SCROLL", "START", "g2"), 110), cast("self", "SCROLL", "SUCCEEDED", "g2"), 111)
+  again = R.step(again, ev("LANDED"), 111.5)
+  T.eq(again.state, "TRADING", "the next attempt works")
+  T.eq(again.scrollError, nil)
+end)
+
+T.test("scroll SUCCEEDED without proof for T.LANDING -> back to GROUPED as unconfirmed", function()
+  local ride = R.step(rideAt("taxi", "EN_ROUTE"), cast("self", "SCROLL", "SUCCEEDED", "g1"), 103)
+  T.eq(R.step(ride, ev("TICK"), 103 + 11.9).state, "EN_ROUTE")
+  local back, acts = R.step(ride, ev("TICK"), 103 + 12)
+  T.eq(back.state, "GROUPED")
+  T.eq(back.scrollError, "unconfirmed")
+  T.eq(names(acts), { "SEND:GROUPED", "SECURE:item:party1" })
+end)
+
+T.test("SCROLL_ERROR and LANDED mean nothing outside a taxi's Come-to-you landing", function()
+  local before = rideAt("taxi", "EN_ROUTE") -- cast started, not succeeded
+  T.eq(R.step(before, ev("SCROLL_ERROR", { message = "x" }), 104).state, "EN_ROUTE", "an error before SUCCEEDED")
+  T.eq(R.step(before, ev("LANDED"), 104).state, "EN_ROUTE", "proof before SUCCEEDED")
+  local rider = R.step(rideAt("rider", "EN_ROUTE"), cast("peer", "SCROLL", "SUCCEEDED", "g1"), 103)
+  T.eq(R.step(rider, ev("LANDED"), 104).state, "EN_ROUTE", "the rider waits for STATE")
+  local pick = rideAt("taxi", "EN_ROUTE", "PICK")
+  T.eq(R.step(pick, ev("SCROLL_ERROR", { message = "x" }), 104).state, "EN_ROUTE")
 end)
 
 T.test("taxi: the rider leaving the inn disarms the scroll, coming back arms it again", function()
@@ -539,6 +588,8 @@ T.test("glue taxi COME to DONE: invite from a timer, armed scroll, trade, portal
   T.eq(wow.ns.Ride.current().state, "EN_ROUTE")
   T.eq(f.current, nil)
   wow:fire("UNIT_SPELLCAST_SUCCEEDED", "player", "g1", SCROLL_SPELL)
+  T.eq(wow.ns.Ride.current().state, "EN_ROUTE", "no proof yet: the scroll count is unchanged")
+  wow:setItem(SCROLL_ITEM, 8) -- the scroll was used: BAG_UPDATE_DELAYED
   T.eq(wow.ns.Ride.current().state, "TRADING")
   T.eq(f.trades, { "party1" })
   wow.ns.fire("TRADE_PAID", "Velvet:7", 30000)
@@ -754,6 +805,54 @@ T.test("glue PICK: proximity polled every second -> ARRIVED -> trade opened", fu
   noErrors(wow)
 end)
 
+-- Taxi COME glue around the scroll's SUCCEEDED (in-game probe 2026-11-19).
+local function landingTaxi()
+  local wow = client()
+  local f = fakes(wow)
+  wow.ns.Ride.start(match("taxi"))
+  wow:joinParty("Velvet", { faction = "Horde" })
+  peerSays(wow, "Velvet", { type = "STATE", state = "RESTING" })
+  wow:fire("UNIT_SPELLCAST_START", "player", "g1", SCROLL_SPELL)
+  wow:advance(1)
+  wow:fire("UNIT_SPELLCAST_SUCCEEDED", "player", "g1", SCROLL_SPELL)
+  return wow, f
+end
+
+T.test("glue: Invalid target right after the scroll's SUCCEEDED -> GROUPED, scroll re-armed, no trade", function()
+  local wow, f = landingTaxi()
+  T.eq(wow.ns.Ride.current().state, "EN_ROUTE")
+  wow:fire("UI_ERROR_MESSAGE", 50, "Invalid target")
+  local r = wow.ns.Ride.current()
+  T.eq(r.state, "GROUPED")
+  T.eq(r.scrollError, "Invalid target")
+  T.eq(wow.ns.UI.RidePanel.view().notes[1], "The scroll failed (Invalid target): both of you must be resting. Try again.")
+  T.eq(f.current and f.current.kind, "item", "the scroll is armed again")
+  T.eq(f.trades, {})
+  wow:advance(1) -- the whisper queue
+  T.eq(stateMsgs(wow, "Velvet Forever"), { "EN_ROUTE", "GROUPED" })
+  noErrors(wow)
+end)
+
+T.test("glue: a UI error long after SUCCEEDED is not the scroll's; proximity after 1 s proves the move", function()
+  local wow, f = landingTaxi()
+  wow.units.party1.near = true
+  T.eq(wow.ns.Ride.current().state, "EN_ROUTE", "near at once does not count: an error may still come")
+  wow:advance(3)
+  T.eq(wow.ns.Ride.current().state, "TRADING", "the tick saw the rider next to us")
+  T.eq(f.trades, { "party1" })
+  wow:fire("UI_ERROR_MESSAGE", 50, "Out of range")
+  T.eq(wow.ns.Ride.current().state, "TRADING")
+  noErrors(wow)
+end)
+
+T.test("glue: no proof within T.LANDING -> GROUPED unconfirmed", function()
+  local wow = landingTaxi()
+  wow:advance(13)
+  T.eq(wow.ns.Ride.current().state, "GROUPED")
+  T.eq(wow.ns.Ride.current().scrollError, "unconfirmed")
+  noErrors(wow)
+end)
+
 T.test("glue cancel: late rider cancel recorded and sent; taxi refused after EN_ROUTE", function()
   local wow = client(RIDER)
   fakes(wow)
@@ -830,6 +929,7 @@ T.test("panel: shown on start, steps follow the state, secure label with key, hi
   P.frame:GetScript("OnUpdate")(P.frame, 0.1)
   wow.player.casting = nil
   wow:fire("UNIT_SPELLCAST_SUCCEEDED", "player", "g1", SCROLL_SPELL)
+  wow:setItem(SCROLL_ITEM, 8) -- the scroll was used: proof of the move
   T.ok(not P.frame.cast:IsShown())
   T.eq(P.view().steps[4].current, true)
 

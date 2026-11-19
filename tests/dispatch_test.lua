@@ -335,10 +335,10 @@ T.test("TAKEs are collected for T.COLLECT s after the first; the Market winner g
   T.eq(#sent(rider, "GONE"), 1)
   T.eq(#results, 1)
   T.eq(results[1][2].key, "Bert Forever")
-  T.eq(results[1][2].eta, 15)
+  T.eq(results[1][2].eta, 6)
   local m = rider.ns.Ride.matches[1]
   T.eq(m, { reqId = confirm[1].reqId, role = "rider", svc = "COME", price = 30000, dest = "OG",
-    peer = { key = "Bert Forever", raw = "Bert Forever" }, eta = 15 })
+    peer = { key = "Bert Forever", raw = "Bert Forever" }, eta = 6 })
   T.eq(#B.ns.Ride.matches, 1, "the winner starts its ride")
   T.eq(#A.ns.Ride.matches + #Cy.ns.Ride.matches, 0)
   T.eq(rider.ns.Dispatch.status().hail, nil)
@@ -483,7 +483,7 @@ T.test("take: TAKE whisper with svc/price/eta/wait; one pending TAKE; free again
   sim:advance(1)
   local take = sent(taxi, "TAKE")[1]
   T.eq({ take.kind, take.target, take.reqId, take.svc, take.price, take.eta, take.wait },
-    { "WHISPER", "Velvet Forever", "Velvet:1", "COME", 30000, 40, 3 })
+    { "WHISPER", "Velvet Forever", "Velvet:1", "COME", 30000, 31, 3 })
   T.eq(D.status().pendingTake, "Velvet:1")
   T.eq({ D.take("Kira:1") }, { nil, "pending" })
   sim:advance(9.5)
@@ -617,7 +617,7 @@ T.test("eta, wait and respTimes", function()
   local sim, _, taxis = world()
   local taxi = taxis[1]
   local D, db = taxi.ns.Dispatch, taxi.env.PortaxiCharDB
-  T.eq(D.eta("COME"), 40, "RESP_DEFAULT + CAST.SCROLL")
+  T.eq(D.eta("COME"), 31, "RESP_DEFAULT + CAST.SCROLL")
   T.eq(D.eta("PICK"), 630, "ETA_PICK + RESP_DEFAULT")
   onDuty(sim, taxi)
   inject(taxi, { type = "HAIL", reqId = "Velvet:1", fac = "Horde", dest = "OG", svcs = { "COME", "PICK" },
@@ -625,7 +625,7 @@ T.test("eta, wait and respTimes", function()
   sim:advance(7)
   T.ok(D.take("Velvet:1"))
   T.eq(db.respTimes, { 7 }, "request seen -> TAKE sent")
-  T.eq(D.eta("COME"), 17)
+  T.eq(D.eta("COME"), 8)
   db.respTimes = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
   sim:advance(11)
   inject(taxi, { type = "HAIL", reqId = "Kira:1", fac = "Horde", dest = "OG", svcs = { "PICK" }, max = 40000,

@@ -1,4 +1,5 @@
 -- Phase 0 tools. Owned by the architect.
+-- luacheck: read globals FriendsFrame
 --   /ptx diag   what the addon can read on this character -> PortaxiDB.diag
 --   0.3 / 0.4   addon messages over the hidden channel (and whether factions share it)
 --   0.5         party invite sent from a timer, not from a click
@@ -270,6 +271,83 @@ local function tradeFieldProbe(args)
   log("trade", "armed: the next trade window's money field gets " .. coins(armed.fieldCopper))
 end
 
+-- Inn hop H0.4 (docs/INN_HOP_PLAN.md §3): /who from the addon. C_FriendList.SendWho needs a hardware event;
+-- a typed slash command is one. "timer" tries the same call from a C_Timer (expected: blocked).
+local who = {}
+local function whoProbe(args)
+  local timer, rest = args:match("^(timer)%s+(.+)$")
+  local filter = rest or args
+  if filter == "" then
+    say('Usage: /ptx who <filter>   e.g. /ptx who z-"Orgrimmar"   (/ptx who timer <filter> = from a timer)')
+    return
+  end
+  local send = ns.api("C_FriendList.SendWho", "SendWho")
+  local function go(how)
+    local now = GetTime()
+    local since = who.at and ("%.1f s after the previous search"):format(now - who.at) or "first search"
+    who.at, who.pending, who.filter = now, now, filter
+    try("who", ("SendWho %s (%s, %s)"):format(filter, how, since), send, filter)
+    C_Timer.After(5, function()
+      if who.pending == now then
+        who.pending = nil
+        log("who", "no WHO_LIST_UPDATE within 5 s for " .. filter)
+      end
+    end)
+  end
+  if timer then
+    log("who", "searching from a timer in 1 s")
+    C_Timer.After(1, function() go("timer") end)
+  else
+    go("slash command")
+  end
+end
+
+-- Inn hop H0.1 / H0.2 / H0.5: watch the Scroll of Liminal Passage for 120 s (cast time, stack count, errors, where
+-- you land) and, when in a group, arm the Portaxi button with the scroll on party1.
+local scrollUntil, scrollCount = 0, nil
+local castAt = {}
+local function scrollWatching()
+  return GetTime() < scrollUntil
+end
+local function scrollProbe()
+  scrollUntil = GetTime() + 120
+  scrollCount = itemCount(C.ITEM.LIMINAL_SCROLL)
+  log("scroll", ("watching for 120 s: %d scrolls, resting %s, %s / %s, group members %d"):format(
+    scrollCount, tostring(IsResting()), GetZoneText() or "?", GetSubZoneText() or "", GetNumGroupMembers()))
+  local secure = ns.Secure
+  local riding = ns.Ride and ns.Ride.current and ns.Ride.current()
+  if IsInGroup() and UnitExists("party1") and secure and secure.set and not riding then
+    local ok, err = secure.set({ kind = "item", item = C.ITEM.LIMINAL_SCROLL, unit = "party1",
+      label = "Scroll: " .. (UnitName("party1") or "party1") })
+    log("scroll", "Portaxi button armed with the scroll on party1: " .. tostring(ok) .. " " .. tostring(err or ""))
+    C_Timer.After(120, function()
+      if not (ns.Ride.current and ns.Ride.current()) then secure.set(nil) end
+    end)
+  else
+    log("scroll", "not in a group (or a ride is active): use the scroll by hand on a targeted party member")
+  end
+end
+
+local function castLogger(phase)
+  return function(unit, castGuid, spellId)
+    if unit ~= "player" or spellId ~= C.SPELL.LIMINAL_PASSAGE or not scrollWatching() then
+      return
+    end
+    local now, key = GetTime(), castGuid or "?"
+    if phase == "START" then
+      castAt[key] = now
+    end
+    local took = (phase ~= "START" and castAt[key]) and (" after %.2f s"):format(now - castAt[key]) or ""
+    log("scroll", ("cast %s%s, scrolls in bags %d"):format(phase, took, itemCount(C.ITEM.LIMINAL_SCROLL)))
+    if phase == "SUCCEEDED" then
+      C_Timer.After(3, function()
+        log("scroll", ("3 s later: %s / %s, resting %s, scrolls %d"):format(GetZoneText() or "?",
+          GetSubZoneText() or "", tostring(IsResting()), itemCount(C.ITEM.LIMINAL_SCROLL)))
+      end)
+    end
+  end
+end
+
 local function showLog()
   local entries = PortaxiDB.probe and PortaxiDB.probe.log or {}
   if #entries == 0 then
@@ -301,6 +379,9 @@ ns.commands.trade = { fn = tradeProbe, args = "<copper>",
 ns.commands.tradefield = { fn = tradeFieldProbe, args = "<copper>",
   help = "0.8 fill the next trade window's money field (MoneyInputFrame_SetCopper)" }
 ns.commands.probe = { fn = probeCommand, args = "[clear]", help = "show the last probe results, or clear them" }
+ns.commands.who = { fn = whoProbe, args = "[timer] <filter>", help = "Inn hop H0.4: /who search from the addon" }
+ns.commands.scroll = { fn = scrollProbe,
+  help = "Inn hop H0.1: watch the Liminal Passage scroll for 120 s; in a group, arm it on party1" }
 
 -- Game events ------------------------------------------------------------------------
 
@@ -401,6 +482,47 @@ function handlers.PLAYER_MONEY()
   end
 end
 
+function handlers.WHO_LIST_UPDATE()
+  local num = ns.api("C_FriendList.GetNumWhoResults", "GetNumWhoResults")
+  local info = ns.api("C_FriendList.GetWhoInfo")
+  local shown, total = 0, 0
+  if num then
+    shown, total = num()
+  end
+  local after = who.pending and ("%.1f s"):format(GetTime() - who.pending) or "no search pending"
+  who.pending = nil
+  log("who", ("results for %s: %s shown, %s total, after %s; Who window open: %s"):format(tostring(who.filter),
+    tostring(shown), tostring(total), after, tostring(FriendsFrame and FriendsFrame:IsShown() or false)))
+  for i = 1, math.min(tonumber(shown) or 0, 10) do
+    local w = info and info(i)
+    if type(w) == "table" then
+      log("who", ("  %s, %s %s %s, %s"):format(tostring(w.fullName), tostring(w.level), tostring(w.raceStr),
+        tostring(w.classStr), tostring(w.area)))
+    end
+  end
+end
+
+handlers.UNIT_SPELLCAST_START = castLogger("START")
+handlers.UNIT_SPELLCAST_SUCCEEDED = castLogger("SUCCEEDED")
+handlers.UNIT_SPELLCAST_FAILED = castLogger("FAILED")
+handlers.UNIT_SPELLCAST_INTERRUPTED = castLogger("INTERRUPTED")
+
+function handlers.UI_ERROR_MESSAGE(_, message)
+  if scrollWatching() then
+    log("scroll", "error: " .. tostring(message))
+  end
+end
+
+function handlers.BAG_UPDATE_DELAYED()
+  if scrollWatching() then
+    local n = itemCount(C.ITEM.LIMINAL_SCROLL)
+    if n ~= scrollCount then
+      log("scroll", ("scrolls in bags %s -> %d"):format(tostring(scrollCount), n))
+      scrollCount = n
+    end
+  end
+end
+
 local function blocked(addon, func)
   if addon == ADDON then
     log("blocked", "protected call blocked: " .. tostring(func))
@@ -411,7 +533,8 @@ handlers.ADDON_ACTION_FORBIDDEN = blocked
 
 local events = CreateFrame("Frame")
 for event in pairs(handlers) do
-  events:RegisterEvent(event)
+  -- One by one: an event the client does not know raises an error and must not stop the others.
+  pcall(events.RegisterEvent, events, event)
 end
 events:SetScript("OnEvent", function(_, event, ...)
   handlers[event](...)

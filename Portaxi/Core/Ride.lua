@@ -12,8 +12,10 @@
 --   Ride.isOver(ride) -> bool               true for nil, DONE, CANCELLED, FAILED
 --
 -- States: MATCHED -> GROUPED -> EN_ROUTE -> ARRIVED -> TRADING -> PAID -> PORTAL_OPEN -> DONE; CANCELLED, FAILED.
--- Extra ride fields (besides §2): startedAt, castGuid, invited (rider got the peer's invite), inviteAt/acceptAt (auto
---   call made), inviteManual/acceptManual (caps switched in this ride), paid (copper), cancelledBy, armedKey.
+-- Extra ride fields (besides §2): startedAt, castGuid, landing (time of the scroll's SUCCEEDED until LANDED),
+--   scrollError (last failed scroll: the UI error text, or "unconfirmed"), invited (rider got the peer's invite),
+--   inviteAt/acceptAt (auto call made), inviteManual/acceptManual (caps switched in this ride), paid (copper),
+--   cancelledBy, armedKey.
 --
 -- Step events (event.type, fields)
 --   TICK                              every second: timeouts (T.INVITE in MATCHED, T.PORTAL in PORTAL_OPEN, auto
@@ -28,6 +30,10 @@
 --   CAST         who, spell, phase, guid   who "self" | "peer"; spell "SCROLL" | "PORTAL";
 --                                     phase "START" | "SUCCEEDED" | "FAILED" | "INTERRUPTED"
 --   NEAR                              PICK: CheckInteractDistance(peerUnit, 2) was true (polled every second)
+--   LANDED                            taxi COME: proof that the scroll moved us after its SUCCEEDED (a scroll
+--                                     fewer in the bags, or the rider within interact distance)
+--   SCROLL_ERROR message              taxi COME: a UI error right after the scroll's SUCCEEDED ("Invalid target":
+--                                     the rider was not resting; nothing moved and no scroll was used)
 --   PAID         copper               taxi: TRADE_PAID for this reqId
 --   ZONE         zone                 rider: GetZoneText() after a zone change
 --   PEER_STATE   state                STATE message from the peer (state name, or "RESTING" / "NOT_RESTING")
@@ -54,7 +60,10 @@
 --                      the taxi also sends it, because the rider may be too far away to see the cast.
 --                      PICK: both sides at once after GROUPED.
 --   GROUPED (again)    taxi, when its scroll cast fails or is interrupted (EN_ROUTE -> GROUPED)
---   ARRIVED            taxi leads (scroll SUCCEEDED, or PICK proximity); the rider also detects it on its own
+--   ARRIVED            taxi leads: COME after the scroll's SUCCEEDED *and* LANDED (SUCCEEDED also fires when the
+--                      scroll fails with "Invalid target", in-game probe 2026-11-19); PICK on proximity (the rider
+--                      also detects that on its own)
+--   GROUPED (again)    taxi, after SCROLL_ERROR, or no LANDED within T.LANDING s of SUCCEEDED (EN_ROUTE -> GROUPED)
 --   TRADING, PAID      taxi leads, the rider follows
 --   PORTAL_OPEN        taxi leads (portal SUCCEEDED on "player"); the rider also sees it on peerUnit
 --   PAID (again)       T.PORTAL in PORTAL_OPEN without DONE, on both sides; the taxi also sends it
@@ -208,6 +217,7 @@ local function go(r, acts, state, now, followed)
   end
   if state ~= "EN_ROUTE" then
     r.castGuid = nil
+    r.landing = nil
   end
   if state == "GROUPED" and r.role == "rider" and r.riderResting ~= nil then
     emit(acts, { type = "SEND", state = restingState(r) })
@@ -255,6 +265,9 @@ function H.TICK(r, _, now, acts)
         switchManual(r, acts, what, false)
       end
     end
+  elseif r.state == "EN_ROUTE" and r.landing and now - r.landing >= C.T.LANDING then
+    r.scrollError = "unconfirmed" -- the scroll did not visibly move us: try again from GROUPED
+    go(r, acts, "GROUPED", now)
   elseif r.state == "PORTAL_OPEN" and age >= C.T.PORTAL then
     go(r, acts, "PAID", now)
   elseif (r.state == "ARRIVED" or r.state == "TRADING") and age >= C.T.TRADE then
@@ -334,7 +347,14 @@ local function castScroll(r, e, now, acts)
     return -- another attempt failed while the real cast runs (e.g. a second click)
   end
   if e.phase == "SUCCEEDED" and (r.state == "EN_ROUTE" or r.state == "GROUPED") then
-    go(r, acts, "ARRIVED", now)
+    -- Not ARRIVED yet: SUCCEEDED also fires when the scroll fails ("Invalid target"). The taxi waits for LANDED or
+    -- SCROLL_ERROR; the rider waits for the taxi's STATE.
+    if r.role == "taxi" then
+      if r.state == "GROUPED" then
+        go(r, acts, "EN_ROUTE", now) -- START was missed
+      end
+      r.landing = now
+    end
   elseif (e.phase == "FAILED" or e.phase == "INTERRUPTED") and r.state == "EN_ROUTE" then
     go(r, acts, "GROUPED", now)
   end
@@ -355,6 +375,20 @@ end
 function H.NEAR(r, _, now, acts)
   if r.svc == "PICK" and r.state == "EN_ROUTE" then
     go(r, acts, "ARRIVED", now)
+  end
+end
+
+function H.LANDED(r, _, now, acts)
+  if r.role == "taxi" and r.svc == "COME" and r.state == "EN_ROUTE" and r.landing then
+    r.scrollError = nil
+    go(r, acts, "ARRIVED", now)
+  end
+end
+
+function H.SCROLL_ERROR(r, e, now, acts)
+  if r.role == "taxi" and r.svc == "COME" and r.state == "EN_ROUTE" and r.landing then
+    r.scrollError = e.message or "error"
+    go(r, acts, "GROUPED", now) -- the revert is sent; the rider follows and the scroll is armed again
   end
 end
 
@@ -456,7 +490,7 @@ local busy = false
 local blocked = {} -- what -> true when ADDON_ACTION_BLOCKED arrived during our own call
 
 local VISIBLE = { "state", "peerUnit", "riderResting", "selfResting", "invited", "late", "reason",
-  "inviteManual", "acceptManual" }
+  "inviteManual", "acceptManual", "scrollError" }
 
 local function visibleChanged(a, b)
   for _, k in ipairs(VISIBLE) do
@@ -730,14 +764,52 @@ local CAST_PHASE = {
   UNIT_SPELLCAST_INTERRUPTED = "INTERRUPTED",
 }
 
+-- Proof that our own scroll moved us (taxi COME): SUCCEEDED alone is no proof, it also fires on "Invalid target".
+local LANDING_GRACE = 1   -- s after SUCCEEDED before proximity counts (a UI error may still come)
+local ERROR_WINDOW = 2    -- s after SUCCEEDED in which a UI error means the scroll failed
+local scrollsBefore       -- scrolls in the bags when our scroll cast started
+
+local function scrollCount()
+  local count = ns.api("C_Item.GetItemCount", "GetItemCount")
+  return count and (tonumber(count(C.ITEM.LIMINAL_SCROLL)) or 0) or nil
+end
+
+local function checkLanded()
+  local r = active
+  if not (r and r.role == "taxi" and r.svc == "COME" and r.landing) then
+    return
+  end
+  local n = scrollCount()
+  local used = scrollsBefore and n and n < scrollsBefore
+  local near = ns.now() - r.landing >= LANDING_GRACE and r.peerUnit and CheckInteractDistance(r.peerUnit, 2)
+  if used or near then
+    apply({ type = "LANDED" })
+  end
+end
+
 local function onCast(event, unit, guid, spellId)
   local kind = spellKind(tonumber(spellId))
   if not kind then
     return
   end
   local who = unit == "player" and "self" or (unit == active.peerUnit and "peer") or nil
-  if who then
-    apply({ type = "CAST", who = who, spell = kind, phase = CAST_PHASE[event], guid = guid })
+  if not who then
+    return
+  end
+  local phase = CAST_PHASE[event]
+  if who == "self" and kind == "SCROLL" and phase == "START" then
+    scrollsBefore = scrollCount()
+  end
+  apply({ type = "CAST", who = who, spell = kind, phase = phase, guid = guid })
+  if who == "self" and kind == "SCROLL" and phase == "SUCCEEDED" then
+    checkLanded()
+  end
+end
+
+local function onUiError(_, message)
+  local r = active
+  if r and r.role == "taxi" and r.landing and ns.now() - r.landing <= ERROR_WINDOW then
+    apply({ type = "SCROLL_ERROR", message = tostring(message) })
   end
 end
 
@@ -768,7 +840,12 @@ GAME.PARTY_INVITE_REQUEST = function(name)
 end
 GAME.PLAYER_UPDATE_RESTING = function() apply(restingEvent()) end
 GAME.ZONE_CHANGED_NEW_AREA = function() apply(zoneEvent()) end
-GAME.PLAYER_ENTERING_WORLD = GAME.ZONE_CHANGED_NEW_AREA
+GAME.PLAYER_ENTERING_WORLD = function()
+  apply(zoneEvent())
+  checkLanded()
+end
+GAME.BAG_UPDATE_DELAYED = checkLanded
+GAME.UI_ERROR_MESSAGE = onUiError
 GAME.ADDON_ACTION_BLOCKED = onBlocked
 GAME.ADDON_ACTION_FORBIDDEN = onBlocked
 for event in pairs(CAST_PHASE) do
@@ -796,6 +873,7 @@ local function onTick()
   if r.svc == "PICK" and r.state == "EN_ROUTE" and r.peerUnit and CheckInteractDistance(r.peerUnit, 2) then
     apply({ type = "NEAR" })
   end
+  checkLanded()
   if r.role == "rider" and (r.state == "PAID" or r.state == "PORTAL_OPEN") then
     apply(zoneEvent())
   end

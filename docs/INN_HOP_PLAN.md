@@ -16,8 +16,9 @@ Stav (2026-11-19): rozhodnutí R1–R5 v §9 uživatel potvrdil. Rozhraní v §5
 | Item `213548`, kouzlo `434752` „Liminal Passage“, stackuje se. | `/ptx diag` 2026-11-18 |
 | Použít ho může **jen mág**. | uživatel 2026-11-19 |
 | „Teleport to a party member. Both you and the target must be resting at an inn or city.“ Přenese **sesílatele** k členovi party; odpočívat musí **oba** (hlavní město, nebo hospoda s rested). | tooltip, build 70959 (wowhelm); uživatel |
-| Sesílání 1 s, bez cooldownu, spouští GCD, nejde za pohybu, Consumable › Scrolls. | fanouškovské databáze, **neověřeno** |
-| `C_FriendList.SendWho` je od 8.2.5 chráněné: jen z hardwarové události (klik, klávesa). Výsledek chodí jako `WHO_LIST_UPDATE`. Cooldown neznámý. | warcraft.wiki.gg, **na Forever neověřeno** |
+| Sesílání **1,0 s** (naměřeno 0,95–1,02 s). Spotřebuje se **jen při úspěchu**, jeden kus; přenos jde přes loading screen. Cooldown a pohyb neměřeno. | sonda `/ptx scroll` 2026-11-19 |
+| Neúspěch (cíl neodpočívá, nebo jiný neplatný cíl): `UNIT_SPELLCAST_SUCCEEDED` **přijde i tak**, hned po něm chyba „Invalid target“ (`UI_ERROR_MESSAGE`), svitek neubude, mág se nehne. | sonda `/ptx scroll` 2026-11-19 |
+| `C_FriendList.SendWho` z příkazu (hardwarová událost) **funguje**: `WHO_LIST_UPDATE` za 0,2 s, nejvýš 50 výsledků, okno Who se neotevře. Z časovače ho hra **zablokuje** (`ADDON_ACTION_BLOCKED`). Cooldown neměřeno. | sonda `/ptx who` 2026-11-19 |
 
 Come-to-you portál z MVP používá stejný mechanismus obráceně: taxík (mág) použije svitek na zákazníka, který tím
 hraje roli hostitele. Inn hop je tedy **Come-to-you bez obchodu a bez portálu**: mág se přenese k odpočívajícímu
@@ -52,6 +53,20 @@ hraje roli hostitele. Inn hop je tedy **Come-to-you bez obchodu a bez portálu**
 | H0.3 | Co vrací `GetSubZoneText()` a `GetZoneText()` v hospodách (název hospody, nebo vesnice?) a jestli `IsResting()` platí v celé hospodě. | `/ptx diag` ve 3 hospodách. | Místo se pojmenuje zónou + podzónou, jak přijdou. |
 | H0.4 | `C_FriendList.SendWho` z kliknutí: funguje, filtr zóny (`z-"Crossroads"` nebo `z-"The Barrens"`), kam přijdou výsledky (událost vs. okno Who), cooldown. | Sonda `/ptx who <zone>` (nový příkaz v `Probe.lua`). | Záloha `/who` vypadne; zbydou hostitelé s Portaxi. |
 | H0.5 | Dosah svitku: funguje přes kontinenty (Kalimdor ↔ Eastern Kingdoms)? | Hop z Orgrimmaru do hospody v Eastern Kingdoms. | Seznam míst omezit na kontinent mága. |
+
+### Výsledky (2026-11-19, sondy `/ptx scroll` a `/ptx who`)
+
+| # | Výsledek |
+|---|---|
+| H0.1 | ✓ Sesílání 1,0 s. Spotřeba jen při úspěchu (2 → 1). Při neplatném cíli přijde `SUCCEEDED` a hned „Invalid target“, svitek zůstane (4 pokusy). **Úspěch se proto nesmí poznávat podle `SUCCEEDED`**, ale podle úbytku svitku nebo přesunu mága (loading screen, změna zóny, blízkost cíle); chyba „Invalid target“ do 1 s po castu = neúspěch. Zbývá: chování za pohybu, cooldown. |
+| H0.2 | ✓ Tlačítko Portaxi se svitkem na `party1` funguje (hop Riverglades / Rog'mar → Orgrimmar). |
+| H0.3 | Částečně: Rog'mar (Riverglades) je místo s odpočinkem, podzóna = název osady; Orgrimmar má podzónu čtvrti (Valley of Strength). Zbývají 2–3 hospody v klasických zónách. |
+| H0.4 | ✓ `/who` ze slash příkazu funguje (50 výsledků, 0,2 s, bez okna Who); z časovače zablokováno. Záloha `/who` v Inn hopu tedy jde, ale jen z tlačítka *Search*. Zbývá cooldown (dvě hledání hned po sobě). |
+| H0.5 | Neověřeno: Riverglades → Orgrimmar; na kterém kontinentu Riverglades leží, ještě nevíme. |
+
+**Dopad na Come-to-you (MVP), opraveno 2026-11-19:** `Ride` přepínal na `ARRIVED` už při `SUCCEEDED` svitku, takže
+při „Invalid target“ by taxík otevřel trade, i když se nepřenesl. Teď čeká na důkaz přesunu (`LANDED`: úbytek svitku,
+nebo zákazník na dosah) a chyba nebo `T.LANDING` bez důkazu vrací jízdu do `GROUPED`. Inn hop to převezme.
 
 ## 4. Průběh hopu (hostitel s Portaxi)
 
