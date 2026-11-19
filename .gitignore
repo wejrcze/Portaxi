@@ -1,0 +1,15 @@
+# Dev tools downloaded by tools/setup-tools.ps1
+tools/bin/
+
+# Agent worktrees (playbook waves)
+.claude/worktrees/
+
+# Editor and OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.bak
+
+# Machine-specific notes for Claude Code
+CLAUDE.local.md

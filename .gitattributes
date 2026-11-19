@@ -1,0 +1,4 @@
+# Keep line endings stable across agent worktrees.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.tga binary

@@ -1,0 +1,1386 @@
+<title>Portaxi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: header, then a two-column stage (mock controls + minimap + in-game addon frame | live explanation + network log), then reference sections. Single dark look on purpose: it mirrors the game UI. */
+:root{
+  color-scheme: dark;
+  --stone:#13110e;      /* page ground */
+  --panel:#1e1a15;      /* frame fill */
+  --panel-2:#28221b;    /* raised rows */
+  --edge:#4a3f30;       /* inner borders */
+  --trim:#8a6d2f;       /* gold frame trim */
+  --text:#ebe3d1;
+  --muted:#a69a83;
+  --gold:#ffd100;       /* WoW gold-text colour */
+  --gold-dim:#b8963a;
+  --mage:#3fc7eb;       /* class colour: Mage */
+  --lock:#8788ee;       /* class colour: Warlock */
+  --warrior:#c69b6d;    /* class colour: Warrior */
+  --ok:#5fd068;
+  --warn:#ff8a3d;
+  --rw:#ff4a2a;         /* raid warning red */
+  --tip:#0b0e18;        /* tooltip fill */
+  --sim:#16191f;        /* mock-control panel, deliberately not game-styled */
+  --f-display:"Cinzel", "Trajan Pro", Georgia, serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--stone);color:var(--text);font:15px/1.55 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:32px 64px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:.02em}
+h1{font-size:clamp(34px,6vw,54px);color:var(--gold);line-height:1.05}
+h2{font-size:24px;color:var(--gold)}
+h3{font-size:16px;color:var(--text)}
+p{margin:0}
+.lede{max-width:66ch;color:var(--text);font-size:17px}
+.eyebrow{font:500 12px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:14px}
+.names{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font:500 13px/1 var(--f-mono);padding:6px 10px;border:1px solid var(--edge);border-radius:3px;color:var(--muted)}
+.chip.pick{border-color:var(--gold-dim);color:var(--gold)}
+.c-MAGE{color:var(--mage)} .c-WARLOCK{color:var(--lock)} .c-WARRIOR{color:var(--warrior)} .goldt{color:var(--gold)}
+
+/* ---- stage ---- */
+.stage{display:grid;grid-template-columns:minmax(0,410px) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:880px){.stage{grid-template-columns:minmax(0,1fr)}}
+.left{position:relative;display:flex;flex-direction:column;gap:10px;min-width:0}
+
+/* mock controls (outside the game UI) */
+.sim{background:var(--sim);border:1px solid #2c3340;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.sim .label{color:#8c96a8}
+.who-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.who-grid button{background:#1e232c;border:1px solid #2f3746;border-radius:4px;padding:7px 8px;text-align:left;cursor:pointer;color:var(--text);font:600 13px var(--f-body);min-width:0}
+.who-grid button small{display:block;font:400 12px var(--f-mono);color:#8c96a8}
+.who-grid button[aria-pressed="true"]{border-color:var(--gold-dim);background:#262b35}
+.sim-toggles{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px}
+.sim-toggles label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.sim-toggles input{accent-color:#d9a92a;margin:0}
+.sim-toggles label.dis{opacity:.45;cursor:not-allowed}
+.sim .seg{border-color:#2f3746}
+.sim .seg button + button{border-left-color:#2f3746}
+.sim .seg button[aria-pressed="true"]{background:#262b35}
+
+/* minimap */
+.mm-row{display:flex;justify-content:flex-end;padding-right:6px}
+.minimap{position:relative;width:124px}
+.mm-zone{text-align:center;font:700 12px var(--f-display);color:var(--gold);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
+.mm-map{position:relative;width:124px;height:124px;border-radius:50%;border:4px solid #6d5a3a;box-shadow:0 0 0 1px #000,inset 0 0 18px #000;
+  background:radial-gradient(circle at 30% 35%,#5b6b3a 0 18%,transparent 19%),radial-gradient(circle at 68% 62%,#3d5470 0 16%,transparent 17%),radial-gradient(circle at 55% 30%,#6e5b3e 0 12%,transparent 13%),linear-gradient(135deg,#43502c,#2c3520)}
+.mm-map::after{content:"";position:absolute;left:50%;top:50%;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:13px solid #f4f0e0;transform:translate(-50%,-60%) rotate(20deg)}
+.mm-btn{position:absolute;left:-8px;bottom:4px;width:36px;height:36px;border-radius:50%;border:2px solid var(--gold-dim);cursor:pointer;padding:0;
+  background:radial-gradient(circle,#d8f6ff 0,#3fc7eb 32%,#1b4a8a 62%,#0c1830 72%);box-shadow:0 0 0 1px #000,0 0 10px #3fc7eb88;z-index:2}
+.mm-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mm-tip{position:absolute;right:calc(100% + 14px);bottom:0;width:220px;background:var(--tip);border:1px solid #6f7a90;border-radius:4px;padding:8px 10px;font-size:13px;line-height:1.45;display:none;z-index:6;box-shadow:0 6px 18px #000a}
+.mm-tip b{color:var(--gold);font-family:var(--f-display)}
+.mm-tip span{display:block;color:var(--text)}
+.mm-tip .hint{color:var(--ok)}
+.mm-btn:hover + .mm-tip,.mm-btn:focus-visible + .mm-tip{display:block}
+
+/* addon frame */
+.frame-wrap{position:relative;padding:18px 0 0 18px}
+.portrait{position:absolute;left:0;top:0;width:62px;height:62px;border-radius:50%;border:3px solid var(--trim);box-shadow:0 0 0 1px #000,0 4px 10px #000a;background:#0d0b09;z-index:3;overflow:hidden}
+.portrait svg{width:100%;height:100%;display:block}
+.frame{background:var(--panel);border:1px solid #000;border-radius:5px;box-shadow:0 0 0 2px var(--trim),0 0 0 3px #000,0 18px 40px rgba(0,0,0,.55)}
+.frame-title{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 54px;background:linear-gradient(#352c20,#221c15);border-bottom:1px solid var(--trim);border-radius:5px 5px 0 0}
+.frame-title .t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.frame-title b{font-family:var(--f-display);color:var(--gold);font-size:15px;letter-spacing:.08em}
+.frame-title small{font:12px var(--f-mono);color:var(--muted)}
+.closex{width:22px;height:22px;border-radius:3px;border:1px solid #c4a043;background:linear-gradient(#a3241a,#5c0f0a);color:#ffd9a0;font:700 13px/1 var(--f-body);cursor:pointer;padding:0;flex:none}
+.closex:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btabs{display:flex;gap:4px;padding:0 10px 0 28px;position:relative;z-index:1}
+.btab{background:#17130f;border:2px solid #5a4828;border-top:0;border-radius:0 0 8px 8px;color:var(--muted);font:600 13px var(--f-body);padding:8px 14px 7px;cursor:pointer;margin-top:1px}
+.btab[aria-selected="true"]{background:var(--panel);color:var(--gold);border-color:var(--trim);margin-top:-2px;padding-top:11px}
+.btab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.closed{border:1px dashed var(--edge);border-radius:5px;padding:28px 18px;text-align:center;color:var(--muted);font-size:14px;margin-top:18px}
+.rw{position:absolute;left:0;right:0;top:470px;text-align:center;font:700 19px/1.3 var(--f-display);color:var(--rw);text-shadow:0 0 4px #000,0 0 2px #000,0 2px 0 #000;pointer-events:none;z-index:8;padding:0 10px}
+.rw.go{animation:rw 3.4s ease-out forwards}
+@keyframes rw{0%{opacity:0;transform:scale(1.25)}8%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0}}
+
+.body{padding:14px;display:flex;flex-direction:column;gap:12px;min-height:500px}
+.label{font:500 11px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--edge);border-radius:4px;overflow:hidden}
+.seg button{flex:1;background:none;border:0;color:var(--muted);padding:7px 6px;font:500 13px var(--f-body);cursor:pointer;min-width:0}
+.seg button + button{border-left:1px solid var(--edge)}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--gold)}
+.list{display:flex;flex-direction:column;border:1px solid var(--edge);border-radius:4px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel);border-bottom:1px solid #2f281f;cursor:pointer}
+.row.static{cursor:default}
+.row:last-child{border-bottom:0}
+.row input{accent-color:#d9a92a;margin:0}
+.row .grow{flex:1;min-width:0}
+.row.sel{background:var(--panel-2)}
+.row small{color:var(--muted);font-size:12px;display:block}
+.money{font:500 13px var(--f-mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+.money i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 4px 0 1px;vertical-align:0}
+.money .g{background:#e6b422}.money .s{background:#c7ccd1}
+.btn{background:linear-gradient(#8a1a12,#5c0f0a);border:1px solid #c4a043;color:var(--gold);font:600 14px var(--f-body);padding:10px 12px;border-radius:4px;cursor:pointer;width:100%}
+.btn:hover{filter:brightness(1.15)}
+.btn.ghost{background:none;border-color:var(--edge);color:var(--muted)}
+.btn.small{width:auto;padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btnrow{display:flex;gap:8px}
+.btnrow .btn{flex:1}
+.btn:focus-visible,.row:focus-within,.seg button:focus-visible,.stepper button:focus-visible,.who-grid button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.card{border:1px solid var(--edge);border-radius:4px;padding:10px;background:var(--panel-2);display:flex;flex-direction:column;gap:6px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.kv > span:first-child{color:var(--muted)}
+.kv > span:last-child{text-align:right}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}
+.dot.off{background:#665b4a;box-shadow:none}
+.pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}.rw.go{animation:none}}
+.steps{display:flex;gap:4px}
+.steps i{flex:1;height:4px;border-radius:2px;background:#3a3127}
+.steps i.on{background:var(--gold-dim)}
+.check{display:flex;flex-direction:column;gap:6px;font-size:13px;margin:0;padding:0;list-style:none}
+.check li{display:flex;gap:8px;align-items:baseline}
+.check li::before{content:"○";color:var(--muted);flex:none}
+.check li.done::before{content:"✓";color:var(--ok)}
+.check li.now{color:var(--gold)}
+.check li.now::before{content:"▸";color:var(--gold)}
+.portal{height:88px;border-radius:50%;margin:4px auto;width:88px;background:radial-gradient(circle,#c9f3ff 0,#3fc7eb 35%,#1b4a8a 62%,transparent 70%);box-shadow:0 0 30px #3fc7eb66}
+.stars{display:flex;gap:4px;justify-content:center}
+.stars button{background:none;border:0;font-size:24px;color:#5a4e3c;cursor:pointer;padding:2px}
+.stars button.on{color:var(--gold)}
+.note{font-size:12px;color:var(--muted)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;color:var(--muted);font-size:13px;padding:16px}
+.tag{display:inline-block;font:600 11px/1 var(--f-mono);letter-spacing:.04em;border-radius:3px;padding:3px 6px;border:1px solid var(--edge);color:var(--muted)}
+.tag.on{border-color:#3f7a45;color:var(--ok)}
+.tag.off{border-color:#7a4a24;color:var(--warn)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+
+/* live cast bar, trade window, confirmations */
+.cast{display:flex;flex-direction:column;gap:4px}
+.cast-name{font:600 12px var(--f-body);color:var(--text)}
+.cast-track{height:14px;border:1px solid #000;box-shadow:0 0 0 1px var(--trim);background:#140f0a;border-radius:2px;overflow:hidden}
+.cast-track i{display:block;height:100%;width:100%;background:linear-gradient(#ffe066,#c99a12);transform-origin:left center;animation:castbar 3s linear forwards}
+@keyframes castbar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.cast-track i{animation:none}}
+.tradewin{border:1px solid var(--trim);border-radius:4px;background:#1a1510;overflow:hidden}
+.tw-h{background:linear-gradient(#352c20,#221c15);padding:6px 10px;font:600 13px var(--f-display);color:var(--gold)}
+.tw-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.tw-cols > div{padding:10px;display:flex;flex-direction:column;gap:4px;font-size:13px;min-width:0}
+.tw-cols > div + div{border-left:1px solid var(--edge)}
+.tw-cols small{color:var(--muted);font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.08em}
+.warnt{color:var(--warn)}
+.confirm{border:1px solid #7a4a24;background:#24190f;border-radius:4px;padding:10px;display:flex;flex-direction:column;gap:8px;font-size:13px}
+
+/* destination tiles, emblems, section headers */
+.body{background:radial-gradient(ellipse 120% 60% at 50% 0%,#29221a 0%,var(--panel) 70%)}
+.sect{display:flex;align-items:center;gap:10px;font:700 11px var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dim)}
+.sect::before,.sect::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--trim))}
+.sect::after{background:linear-gradient(90deg,var(--trim),transparent)}
+.cities{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.city{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;background:linear-gradient(#211c16,#17130f);border:1px solid var(--edge);border-radius:6px;cursor:pointer;color:var(--muted);min-width:0;transition:border-color .15s,box-shadow .15s,background .15s}
+.emblem{display:inline-block;border-radius:50%;overflow:hidden;flex:none}
+.emblem svg{display:block;width:100%;height:100%}
+.city .emblem{width:60px;height:60px;border:2px solid #5d5141;box-shadow:0 0 0 1px #000;filter:grayscale(1) brightness(.6);transition:filter .2s,transform .2s,border-color .2s,box-shadow .2s}
+.city:hover .emblem{filter:grayscale(.5) brightness(.85)}
+.city.on{border-color:var(--gold-dim);background:linear-gradient(#2e251a,#1b1610);box-shadow:0 0 0 1px #000,0 0 16px rgba(255,209,0,.12)}
+.city.on .emblem{filter:none;border-color:var(--gold);box-shadow:0 0 0 1px #000,0 0 14px rgba(255,209,0,.45);transform:scale(1.07)}
+.cname{font:700 12px var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.city.on .cname{color:var(--gold)}
+.cfrom{font:500 11px var(--f-mono);color:var(--muted)}
+.city.on .cfrom{color:var(--text)}
+.city:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.city,.city .emblem{transition:none}.city.on .emblem{transform:none}}
+.emblem.md{width:44px;height:44px;border:2px solid var(--gold);box-shadow:0 0 0 1px #000,0 0 10px rgba(255,209,0,.3)}
+.emblem.xs{width:18px;height:18px;border:1px solid var(--trim);vertical-align:-4px}
+.cityinfo{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:0 2px}
+.whoami{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px}
+.pill{font:500 11px/1 var(--f-mono);padding:4px 7px;border-radius:10px;border:1px solid var(--edge);color:var(--muted);white-space:nowrap}
+.pill.ok{border-color:#3f7a45;color:var(--ok)}
+.pill.bad{border-color:#7a4a24;color:var(--warn)}
+.pill.gold{border-color:var(--gold-dim);color:var(--gold)}
+.si{width:16px;height:16px;flex:none;vertical-align:-3px}
+.seg.ico button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 4px 8px}
+.svc-ico{color:var(--gold-dim);margin-right:6px}
+.tag .si{width:12px;height:12px;vertical-align:-2px}
+.walk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer}
+.walk input{accent-color:#d9a92a;margin:0}
+.walk small{color:var(--muted)}
+.walk .si{color:var(--gold-dim)}
+.reach{display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:flex-end;align-items:center}
+.ridehead{display:flex;align-items:center;gap:12px;padding:2px 0}
+.rh-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rh-t b{font:700 16px var(--f-display);color:var(--gold);letter-spacing:.04em}
+.rh-t small{color:var(--muted);font-size:12px}
+
+.cities.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cities.four .city .emblem{width:52px;height:52px}
+@media (max-width:400px){.cities.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* factions and spell readout */
+.pill.fa{border-color:#3b5fb0;color:#8fb3ff;background:rgba(59,95,176,.15)}
+.pill.fh{border-color:#a8322a;color:#ff8f84;background:rgba(168,50,42,.15)}
+.frame-wrap.fh .frame{box-shadow:0 0 0 2px #8a3a22,0 0 0 3px #000,0 18px 40px rgba(0,0,0,.55)}
+.frame-wrap.fh .frame-title{background:linear-gradient(#3a2018,#22140f);border-bottom-color:#8a3a22}
+.frame-wrap.fh .portrait{border-color:#8a3a22}
+.spell{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.spell small{color:var(--muted);font-size:11px}
+.spell.off{color:var(--muted)}
+.spell.off .emblem{filter:grayscale(1) brightness(.55)}
+.note.no{color:var(--warn)}
+
+/* market gauge */
+.gauge{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#3a3127}
+.gauge .sup{background:var(--mage)}
+.gauge .dem{background:var(--gold-dim)}
+.legend{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--muted)}
+.legend .s{color:var(--mage)} .legend .d{color:var(--gold-dim)}
+.mood{font-weight:600;font-size:13px}
+.mood.up{color:var(--warn)} .mood.down{color:var(--ok)} .mood.even{color:var(--text)}
+
+/* requests / offers */
+.req{border:1px solid var(--edge);border-radius:4px;padding:10px;background:var(--panel-2);display:flex;flex-direction:column;gap:5px}
+.req.fresh{border-color:var(--gold-dim);box-shadow:inset 3px 0 0 var(--gold)}
+.req.dim{opacity:.6}
+.badge{font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:#1a1408;background:var(--gold);border-radius:2px;padding:2px 5px;vertical-align:1px}
+.timer{height:3px;border-radius:2px;background:#3a3127;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--gold-dim)}
+.offer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:8px 10px;border-bottom:1px solid #2f281f;background:var(--panel)}
+.offer:last-child{border-bottom:0}
+.offer .who{font-weight:600;font-size:14px}
+.offer small{color:var(--muted);font-size:12px}
+.offer .act{grid-row:span 2;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kpi{border:1px solid var(--edge);border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:5px;background:var(--panel-2);min-width:0}
+.kpi small{color:var(--muted);font-size:12px}
+.bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;padding:4px 2px 0}
+.bar{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.bar .track{width:100%;max-width:26px;height:76px;display:flex;align-items:flex-end;background:#1a1611;border-radius:2px}
+.bar .track i{display:block;width:100%;background:var(--gold-dim);border-radius:2px 2px 0 0}
+.bar.today .track i{background:var(--gold)}
+.bar .bv{font:11px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.bar.today .bv{color:var(--gold)}
+.bar .bd{font:11px var(--f-mono);color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:28px;height:28px;border:1px solid var(--edge);border-radius:3px;background:var(--panel-2);color:var(--text);font:600 15px/1 var(--f-body);cursor:pointer;padding:0}
+.stepper b{min-width:74px;text-align:center}
+.pricebox{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--edge);border-radius:4px;padding:8px 10px;background:var(--panel-2)}
+.pricebox .lbl{font-size:13px;min-width:0}
+.pricebox .lbl small{display:block;color:var(--muted);font-size:12px}
+
+.explain{display:flex;flex-direction:column;gap:18px;min-width:0}
+.now-box{border-left:3px solid var(--gold-dim);padding:2px 0 2px 16px;display:flex;flex-direction:column;gap:8px}
+.now-box p{max-width:62ch}
+.log{background:#0b0a08;border:1px solid var(--edge);border-radius:4px;padding:10px 12px;font:12.5px/1.6 var(--f-mono);color:#9fd49a;overflow-x:auto;min-height:150px}
+.log div{white-space:pre}
+.log .dim{color:#6b6253}
+.log .me{color:var(--gold)}
+.reset{align-self:flex-start}
+
+/* ---- reference sections ---- */
+section{display:flex;flex-direction:column;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:860px){.grid3{grid-template-columns:minmax(0,1fr)}}
+.mode{border-top:2px solid var(--edge);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.mode p{color:var(--text);font-size:14px}
+.mode .who{font:500 12px var(--f-mono);color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #2f281f;vertical-align:top}
+th{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+td code,p code,li code{font:13px var(--f-mono);color:#9fd49a}
+.yes{color:var(--ok)} .no{color:var(--warn)}
+.cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+@media (max-width:760px){.cols2{grid-template-columns:minmax(0,1fr)}}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:66ch}
+.phase{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid #2f281f}
+.phase b{font:500 13px var(--f-mono);color:var(--gold)}
+.warnbox{border:1px solid #6b4a24;background:#22190f;border-radius:4px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.warnbox h3{color:var(--warn)}
+.swing{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.swing{grid-template-columns:minmax(0,1fr)}}
+.swing div{border:1px solid var(--edge);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Addon concept · mock v0.8</div>
+    <h1>Portaxi</h1>
+    <p class="lede">A taxi service for WoW Forever. Sit in an inn, pick a city, and a <span class="c-MAGE">mage</span> on the network teleports to you with a Scroll of Liminal Passage and opens a portal. <span class="c-WARLOCK">Warlocks</span> sell summons. Riders and taxis set their own prices, so rides cost more when taxis are scarce and less when there are plenty. The whole dispatch runs inside the players' addons.</p>
+    <div class="names">
+      <span class="eyebrow">Name:</span>
+      <span class="chip pick">Portaxi</span>
+      <span class="chip">Blinkr</span>
+      <span class="chip">LeyRide</span>
+      <span class="chip">Arcane Cab</span>
+      <span class="chip">Hop</span>
+    </div>
+  </header>
+
+  <!-- ===== interactive mock ===== -->
+  <div class="stage">
+    <div class="left">
+      <div class="sim" aria-label="Mock controls">
+        <div class="label">Mock controls · not part of the addon</div>
+        <div class="seg" role="group" aria-label="Faction" id="fac-seg"></div>
+        <div class="who-grid" role="group" aria-label="Play as" id="who-grid"></div>
+        <div class="sim-toggles">
+          <label id="lbl-rest"><input type="checkbox" id="sim-rest"> Resting (inn or city)</label>
+          <label id="lbl-scroll"><input type="checkbox" id="sim-scroll"> Scroll of Liminal Passage in bags</label>
+          <label id="lbl-reag"><input type="checkbox" id="sim-reag"> <span id="reag-txt">Rune of Portals in bags</span></label>
+        </div>
+        <div class="label">Gold in bags</div>
+        <div class="seg" role="group" aria-label="Gold in bags" id="gold-seg"></div>
+        <div class="label">Market</div>
+        <div class="seg" role="group" aria-label="Market scenario">
+          <button id="mk-few" data-mk="few">Few taxis</button>
+          <button id="mk-bal" data-mk="bal">Balanced</button>
+          <button id="mk-many" data-mk="many">Many taxis</button>
+        </div>
+      </div>
+
+      <div class="mm-row">
+        <div class="minimap">
+          <div class="mm-zone" id="mm-zone">Redridge</div>
+          <div class="mm-map" aria-hidden="true"></div>
+          <button class="mm-btn" id="mm-btn" aria-label="Portaxi: open or close the window"></button>
+          <div class="mm-tip" role="tooltip" id="mm-tip"></div>
+        </div>
+      </div>
+
+      <div class="rw" id="rw" hidden></div>
+
+      <div id="frame-wrap" class="frame-wrap">
+        <div class="portrait" id="portrait" aria-hidden="true"></div>
+        <div class="frame" aria-label="Addon window mock">
+          <div class="frame-title">
+            <div class="t"><b>PORTAXI</b><small id="ft-sub">Rider</small></div>
+            <small class="note" id="ft-online"></small>
+            <button class="closex" id="close" aria-label="Close window">✕</button>
+          </div>
+          <div class="body" id="view"></div>
+        </div>
+        <div class="btabs" role="tablist" id="btabs"></div>
+      </div>
+      <div class="closed" id="closed" hidden>The window is closed. Open it with the round button on the minimap or type <code style="font:13px var(--f-mono);color:#9fd49a">/ptx</code>.</div>
+    </div>
+
+    <div class="explain">
+      <div class="now-box">
+        <div class="eyebrow" id="now-step">Step 1 of 6</div>
+        <h3 id="now-title">Order</h3>
+        <p id="now-text"></p>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:8px">Addon network traffic (hidden channel)</div>
+        <div class="log" id="log" aria-live="polite"></div>
+      </div>
+      <button class="btn ghost small reset" id="reset">Reset the mock</button>
+      <ul class="plain note" style="font-size:13px">
+        <li>Pick a faction and a character in the mock controls. The addon reads faction, race, class, level, learned portal spells, reagents, scrolls, resting and gold on its own: warriors only get the Ride tab, mages and warlocks also get Drive, and each faction sees only its own three cities and its own taxis.</li>
+        <li>Try Quillra (knows only Portal: Stormwind) or Vexira (no Rune of Portals): the addon offers only what they can actually deliver. Gruzhak carries 3g, so a hail with a 3g 50s maximum is blocked.</li>
+        <li>Order a ride as Brennwick, then switch to Velvetmoon. The request shows up on his board with a raid warning, and you can take it from the driver's side.</li>
+        <li>Switch the <b>Market</b> between few and many taxis and watch the prices and the market gauge move.</li>
+        <li>As Velvetmoon, untick <b>Resting</b> or the scroll: Come-to-you disappears from his offers at once, for him and for every rider.</li>
+        <li>Try the unfair case: hail as Brennwick, let Velvetmoon use the scroll, then cancel. Brennwick ends up owing half the price, gets locked to pickups, and taxis see the debt on his next request.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== detection ===== -->
+  <section>
+    <h2>Who can drive</h2>
+    <p class="lede" style="font-size:15px">Nobody picks a role, a faction or a price list. The addon reads the character and decides what it can sell right now, and what it can afford as a rider. Anyone who can't drive sees only the Ride tab: their own faction's cities, the taxis and their prices.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>What the addon reads</th><th>API</th><th>What it decides</th></tr></thead>
+        <tbody>
+          <tr><td>Faction</td><td><code>UnitFactionGroup</code></td><td>Which network (Alliance or Horde channel) and which three cities you see</td></tr>
+          <tr><td>Race, class, level</td><td><code>UnitRace</code>, <code>UnitClass</code>, <code>UnitLevel</code></td><td>Mage or Warlock can drive; everyone else rides</td></tr>
+          <tr><td>Portal spells learned</td><td><code>IsSpellKnown</code></td><td>Exactly which cities a mage can sell. A level 47 mage who hasn't trained Portal: Ironforge doesn't offer Ironforge.</td></tr>
+          <tr><td>Ritual of Summoning, helpers in group, current zone</td><td><code>IsSpellKnown</code>, group roster, <code>GetZoneText</code>, <code>GetSubZoneText</code></td><td>Whether a warlock can sell summons, and the place riders get summoned to (any zone, not only cities)</td></tr>
+          <tr><td>Rune of Portals / Soul Shard in bags</td><td><code>GetItemCount</code></td><td>No rune: every portal is paused. No shard: summons are paused.</td></tr>
+          <tr><td>Scroll of Liminal Passage in bags</td><td><code>GetItemCount</code></td><td>Whether Come-to-you is on offer</td></tr>
+          <tr><td>Resting in an inn or city</td><td><code>IsResting</code></td><td>Come-to-you for both sides; where a warlock summons to</td></tr>
+          <tr><td>Gold in bags</td><td><code>GetMoney</code></td><td>A rider can't hail, post or book above what they carry</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Everything is re-checked on <code>BAG_UPDATE</code>, <code>PLAYER_UPDATE_RESTING</code>, <code>LEARNED_SPELL_IN_TAB</code> and <code>PLAYER_MONEY</code>. When a mage uses the last rune or leaves the inn, the offer changes in the next heartbeat, so riders never book a ride that can't happen.</p>
+    <div class="cols2">
+      <div class="warnbox" style="border-color:var(--edge);background:var(--panel)">
+        <h3 style="color:var(--gold)">Can the taxi deliver?</h3>
+        <p>A mage only appears on the board for cities whose portal spell they know, and only while they have at least one Rune of Portals. Come-to-you also needs the scroll and resting. A warlock needs the ritual, two helpers and a Soul Shard. The portal button itself stays grey without a rune.</p>
+      </div>
+      <div class="warnbox" style="border-color:var(--edge);background:var(--panel)">
+        <h3 style="color:var(--gold)">Can the rider pay?</h3>
+        <p>Before a hail, a posted price or a booking leaves the rider's addon, it checks <code>GetMoney</code>. A rider with 50s can't post 3g. If the gold is gone by the time the trade opens, the Trade button stays grey and the portal stays locked. A modified addon could skip this check, but the trade would still fail and no portal is cast without payment.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== services ===== -->
+  <section>
+    <h2>Three services</h2>
+    <div class="grid3">
+      <div class="mode">
+        <h3>Come-to-you portal</h3>
+        <div class="who">rider resting in an inn or city + 1 mage</div>
+        <p>The main service. The mage invites the rider to the party, uses Scroll of Liminal Passage, appears next to them and opens a portal. The rider doesn't move.</p>
+        <p class="note">Both must be resting. The addon checks both sides before the ride can be booked.</p>
+      </div>
+      <div class="mode">
+        <h3>Portal pickup</h3>
+        <div class="who">rider + 1 mage</div>
+        <p>No scroll needed. The rider walks or flies to the mage, pays in the trade window and gets the portal.</p>
+        <p class="note">Usually cheaper. The fallback when the scrolls run out.</p>
+      </div>
+      <div class="mode">
+        <h3>Summon</h3>
+        <div class="who">rider anywhere + warlock + 2 helpers</div>
+        <p>The warlock summons the rider to wherever the warlock stands: a capital, a dungeon entrance, a raid, anywhere. With Summon pickup (anywhere) on, riders see each warlock's location and pick the place they want.</p>
+        <p class="note">Payment happens after arrival, because the rider can't trade before the summon.</p>
+      </div>
+    </div>
+    <div class="warnbox">
+      <h3>Scroll of Liminal Passage: what we know</h3>
+      <p>According to <a href="https://foreverdb.net/scrolls" style="color:var(--gold)">ForeverDB</a>, it teleports you to a party member, and both of you must be resting at an inn or in a city. A Blizzard forum thread describes it as reaching "any inn". I found no official description from Blizzard. Still unknown: where the scroll comes from, whether it's consumed, its cooldown, and whether only mages can use it. Scarce scrolls mean Come-to-you will trade at a higher price, and the market handles that on its own.</p>
+    </div>
+  </section>
+
+  <!-- ===== market ===== -->
+  <section>
+    <h2>Market pricing</h2>
+    <p class="lede" style="font-size:15px">There is no price list. Taxis post what they want, riders post what they'll pay, and the addon matches them. When mages are scarce, riders have to pay more to get picked up. When there are plenty, taxis undercut each other.</p>
+    <div class="cols2">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>Four ways to ride</h3>
+        <ul class="plain">
+          <li><b>Hail: just the fastest.</b> Set only a maximum. The taxi that can get you there soonest wins, and you pay its own price. If two taxis are within 15 seconds of each other, the one that has waited longer for work gets it; you won't notice the difference.</li>
+          <li><b>Name a price: pay more, go first.</b> You pay exactly what you name. Taxis see requests sorted by price, highest first, so when taxis are scarce, a higher price gets served before a lower one. The addon tells you your place in line and what it takes to be first.</li>
+          <li><b>Browse.</b> Every taxi that can serve your city, with service, arrival time, rating and price. Book the one you like.</li>
+          <li><b>Summon to a warlock.</b> A list of warlocks on duty and where each one stands: a city, a dungeon entrance, anywhere. Pick by place and get summoned there.</li>
+        </ul>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>How work is shared: the taxi rank</h3>
+        <ul class="plain">
+          <li><b>Own price per service.</b> A mage can ask 2g 80s for Come-to-you and 1g 50s for a pickup.</li>
+          <li><b>Rank points</b> = minutes waiting since the last ride, +3 for Trusted taxis, −10 for 30 minutes after a cancel. Finishing a ride puts the taxi at the back.</li>
+          <li><b>When several taxis can take the same ride</b> (a posted price several of them accept, or a hail tie), the one with the most rank points gets it. That spreads the work, so a new mage still gets rides next to a busy veteran.</li>
+          <li><b>Auto-take</b> grabs the best-paying request at or above your price. Taxis can also pick by hand, even below their own price.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="swing">
+      <div><b class="no">Few taxis</b><span>Riders' low prices sit on the board unanswered. Riders raise their price or hail with a higher maximum, and taxis can raise their asks and still get picked. Prices go up.</span></div>
+      <div><b>Balanced</b><span>Most posted prices match within a minute. The gauge shows a typical price taken from the last 20 rides on the network, so both sides know where to start.</span></div>
+      <div><b class="yes">Many taxis</b><span>Taxis wait for work, lower their asks and take lower posted prices. Riders can post low and wait. Prices go down.</span></div>
+    </div>
+    <p class="note">Guard rails: lowest price 10s, requests expire after 2 minutes, one open request per rider, and riders who cancel often get pushed down the board.</p>
+  </section>
+
+  <!-- ===== fair play ===== -->
+  <section>
+    <h2>Fair play</h2>
+    <p class="lede" style="font-size:15px">There is no escrow in the game, so somebody always carries a little risk. Portaxi keeps that risk small and puts it on whoever breaks the deal. The portal is never cast before the gold arrives, so "take the portal and run" can't happen. What's left is a rider who cancels after the mage has spent a scroll.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Stage of a Come-to-you ride</th><th>Who risks what</th><th>If the rider cancels</th><th>If the taxi cancels</th></tr></thead>
+        <tbody>
+          <tr><td>Matched, party formed</td><td>nobody</td><td>free (max 3 free cancels per hour)</td><td>rider owes nothing; taxi loses 1% reliability and 30 min of priority</td></tr>
+          <tr><td>Mage starts the scroll</td><td>mage: the scroll</td><td>fee: half the price, at least 50s</td><td>not possible, the scroll is already used</td></tr>
+          <tr><td>Mage arrived, trade open</td><td>mage: scroll and time</td><td>same fee; the mage is right there, so it can be paid on the spot</td><td>same as above</td></tr>
+          <tr><td>Paid, portal not cast yet</td><td>rider: the gold</td><td>—</td><td>the rider's addon has the trade on record: "paid, no portal" report and a refund button for the mage</td></tr>
+          <tr><td>Portal open</td><td>nobody</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">If the rider leaves the inn before the scroll, the mage's scroll button goes grey and the mage can cancel without a penalty. Summons are the one ride paid after arrival, which is why warlocks can skip riders who owe gold.</p>
+    <div class="cols2">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>Penalties for riders</h3>
+        <ul class="plain">
+          <li><b>Late cancel</b> (after the scroll or ritual started): marked on the network for 7 days, and the fee is owed to that taxi.</li>
+          <li><b>Owes gold:</b> until it's paid, only pickups (pay first). Come-to-you and summons are locked, taxis see "owes 1g 40s" on every request, and most auto-takes skip it.</li>
+          <li><b>Paying clears it:</b> in person or by mail. Only the creditor's addon can clear the debt, after it sees the gold arrive.</li>
+          <li><b>Three unpaid fees:</b> marked unreliable. Most taxis won't take you at all.</li>
+        </ul>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>Bonuses for taxis</h3>
+        <ul class="plain">
+          <li><b>Reliability</b> = share of taken rides that were completed. Shown on every offer.</li>
+          <li><b>Trusted badge</b> at 25+ rides and 97%+ reliability: +3 points in the taxi rank, so ties go its way more often.</li>
+          <li><b>Fair share:</b> the longest-waiting taxi wins ties, so nobody gets starved of rides by faster or older taxis.</li>
+          <li><b>Cancelling costs:</b> a taxi that cancels after accepting loses reliability and 10 rank points for 30 minutes.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Limits: without a server, debts and reliability travel by gossip between addons. A penalty only counts when both addons logged the match, and ratings from your guild and friends weigh more, but a modified addon can still lie. Each taxi decides for itself whom to skip.</p>
+  </section>
+
+  <!-- ===== how it talks ===== -->
+  <section>
+    <h2>How it works inside</h2>
+    <div class="cols2">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <h3>A network without a server</h3>
+        <p>Addons can't reach the internet, so there is no central server. Everyone with Portaxi silently joins a hidden chat channel (for example <code>PortaxiNet</code>), and the addons exchange invisible addon messages there. The order board lives on every player's machine at once.</p>
+        <ul class="plain">
+          <li><code>HELLO</code> every taxi on duty, once a minute: class, level, place, services it can offer right now, its price for each, rating.</li>
+          <li><code>ASK</code> a taxi changed a price.</li>
+          <li><code>HAIL</code> a rider hails with a maximum. <code>BID</code> a rider posts an exact price. <code>BOOK</code> a rider books one taxi from the list.</li>
+          <li><code>TAKE</code> a taxi takes a request. The rider's addon confirms the first valid one and tells everyone else it's gone.</li>
+          <li>The rest of the ride goes privately over <code>WHISPER</code>.</li>
+        </ul>
+        <p class="note">Addon messages are rate limited, so heartbeats go once a minute and price changes are batched. Channels are split by faction, so Alliance and Horde each have their own market.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <h3>What the addon does and what the player clicks</h3>
+        <div class="tbl">
+          <table style="min-width:0">
+            <tbody>
+              <tr><td>Detect class, level, portals, scroll, resting</td><td class="yes">addon</td></tr>
+              <tr><td>Run the order board and match prices</td><td class="yes">addon</td></tr>
+              <tr><td>Form the party when matched (<code>InviteUnit</code>; the rider's addon accepts invites only from the matched taxi)</td><td class="yes">addon*</td></tr>
+              <tr><td>Show the scroll, ritual and portal casts live to both sides (<code>UNIT_SPELLCAST_START</code> on the party unit)</td><td class="yes">addon</td></tr>
+              <tr><td>Open the trade when in range and type in the agreed gold (<code>InitiateTrade</code>, <code>SetTradeMoney</code>)</td><td class="yes">addon*</td></tr>
+              <tr><td>Read what arrived and unlock the portal (<code>GetTargetTradeMoney</code>, <code>PLAYER_MONEY</code>)</td><td class="yes">addon</td></tr>
+              <tr><td>One "next step" button and keybind: scroll, then portal</td><td class="yes">addon prepares</td></tr>
+              <tr><td>Use the scroll, cast the portal or summon</td><td class="no">player click</td></tr>
+              <tr><td>Click Trade, accept the summon</td><td class="no">player click</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">The game doesn't let addons cast or accept a trade without a click. Portaxi is a dispatcher and a calculator, not a bot, so it should stay within the rules. * Auto-invite, auto-accept and opening the trade work in other Classic addons, but need a test on Forever's client in phase 0.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Payments and trust</h2>
+    <div class="cols2">
+      <ul class="plain">
+        <li><b>Pay in the trade window before the portal.</b> The taxi's addon reads the amount and only lights up the portal button when it's right.</li>
+        <li><b>Summons are paid after arrival.</b> That's the one ride where the taxi carries the risk, so warlocks can require a minimum rating.</li>
+        <li><b>A portal lasts a minute.</b> If the rider misses it, the addon offers the mage a free second one to avoid disputes.</li>
+      </ul>
+      <ul class="plain">
+        <li><b>1–5 star ratings</b> after every ride, counted only where the addon recorded a real trade.</li>
+        <li><b>Ratings spread over the network</b>, but without a server they can't be fully secured: a modified addon can send fake ones. Ratings from your guild and friends list weigh more.</li>
+        <li><b>Local blacklist</b> for riders who didn't pay and taxis who took the gold and didn't port.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Roadmap</h2>
+    <div>
+      <div class="phase"><b>Phase 0</b><span>Test in game: Scroll of Liminal Passage (source, consumed or not, cooldown, mages only?), addon messages over a hidden channel, auto-invite and opening the trade from an addon, summons on Forever, and whether server rules allow paid services.</span></div>
+      <div class="phase"><b>Phase 1</b><span>MVP: auto-detection, Come-to-you and Pickup, heartbeat, hail with a maximum, browse and book, trade check, scroll and portal buttons, minimap button. Test with 3–5 friends.</span></div>
+      <div class="phase"><b>Phase 2</b><span>The full market: posted prices, auto-take, market gauge with the typical price. Warlock summons.</span></div>
+      <div class="phase"><b>Phase 3</b><span>Fair play: cancellation fees, debts and their clearing, reliability, the Trusted badge and request priority. Ratings, driver earnings, raid warning and sound for new requests.</span></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  /* ---------- data ---------- */
+  const FAC={A:{name:"Alliance",cls:"fa"},H:{name:"Horde",cls:"fh"}};
+  const CITIES=[
+    {id:"SW",name:"Stormwind",lvl:40,fac:"A"},{id:"IF",name:"Ironforge",lvl:40,fac:"A"},{id:"DN",name:"Darnassus",lvl:50,fac:"A"},
+    {id:"OG",name:"Orgrimmar",lvl:40,fac:"H"},{id:"UC",name:"Undercity",lvl:40,fac:"H"},{id:"TB",name:"Thunder Bluff",lvl:50,fac:"H"}];
+  const CITY=Object.fromEntries(CITIES.map(c=>[c.id,c]));
+  CITY.ANY={id:"ANY",name:"Warlock's location",lvl:0,fac:"*"};
+  const dName=R=>R.destPlace||CITY[R.dest].name;
+  const citiesOf=f=>CITIES.filter(c=>c.fac===f);
+  const SVC={COME:"Come-to-you portal",PICK:"Portal pickup",SUM:"Summon"};
+  const SVCS={COME:"Come-to-you",PICK:"Pickup",SUM:"Summon"};
+  const CLS={WARRIOR:"Warrior",MAGE:"Mage",WARLOCK:"Warlock"};
+  const CAST_MS=3000;
+  /* what the addon reads per character: faction, race, class, level, known portal spells, Ritual of Summoning, scrolls, resting, place */
+  const CHARS={
+    brennwick:{key:"brennwick",name:"Brennwick",fac:"A",race:"Dwarf",cls:"WARRIOR",lvl:32,place:"Lakeshire Inn",zone:"Redridge",away:"Lake Everstill",resting:true,scroll:0,rating:4.7,spells:[],gold:2500},
+    velvetmoon:{key:"velvetmoon",name:"Velvetmoon",fac:"A",race:"Gnome",cls:"MAGE",lvl:54,place:"Ironforge",zone:"Ironforge",away:"Kharanos road",city:"IF",resting:true,scroll:3,rating:4.9,rel:98,rides:212,spells:["SW","IF","DN"],runes:14,gold:2500},
+    quillra:{key:"quillra",name:"Quillra",fac:"A",race:"Human",cls:"MAGE",lvl:47,place:"Stormwind",zone:"Stormwind",away:"Goldshire road",city:"SW",resting:true,scroll:0,rating:4.6,rel:91,rides:40,spells:["SW"],runes:6,gold:2500},
+    noxvell:{key:"noxvell",name:"Noxvell",fac:"A",race:"Human",cls:"WARLOCK",lvl:51,place:"Stormwind",zone:"Stormwind",away:"Duskwood",city:"SW",resting:true,scroll:0,rating:4.8,helpers:2,ritual:true,rel:96,rides:88,spells:[],shards:9,gold:2500},
+    gruzhak:{key:"gruzhak",name:"Gruzhak",fac:"H",race:"Orc",cls:"WARRIOR",lvl:28,place:"Crossroads Inn",zone:"The Barrens",away:"Southern Barrens road",resting:true,scroll:0,rating:4.6,spells:[],gold:300},
+    ashveil:{key:"ashveil",name:"Ashveil",fac:"H",race:"Undead",cls:"MAGE",lvl:52,place:"Undercity",zone:"Undercity",away:"Tirisfal road",city:"UC",resting:true,scroll:2,rating:4.9,rel:97,rides:120,spells:["OG","UC","TB"],runes:9,gold:2500},
+    vexira:{key:"vexira",name:"Vexira",fac:"H",race:"Troll",cls:"MAGE",lvl:44,place:"Orgrimmar",zone:"Orgrimmar",away:"Durotar road",city:"OG",resting:true,scroll:1,rating:4.5,rel:92,rides:33,spells:["OG"],runes:0,gold:2500},
+    morgrith:{key:"morgrith",name:"Morgrith",fac:"H",race:"Orc",cls:"WARLOCK",lvl:55,place:"Orgrimmar",zone:"Orgrimmar",away:"Durotar road",city:"OG",resting:true,scroll:0,rating:4.7,helpers:2,ritual:true,rel:95,rides:70,spells:[],shards:4,gold:2500}
+  };
+  const DISP={velvetmoon:[20,4],quillra:[35,18],noxvell:[25,9],ashveil:[15,6],vexira:[40,22],morgrith:[30,11]};
+  Object.entries(DISP).forEach(([k,[r,w]])=>{CHARS[k].resp=r;CHARS[k].wait=w;});
+  const INIT=Object.fromEntries(Object.values(CHARS).map(c=>[c.key,{scroll:c.scroll,rel:c.rel,runes:c.runes,shards:c.shards,gold:c.gold,wait:c.wait}]));
+
+  /* NPC market, Alliance side; the Horde side is the same market mirrored onto Horde cities, names and places */
+  const NPC_DA={
+    few:[{name:"Arvessa",cls:"MAGE",lvl:58,place:"Stormwind",city:"SW",rating:4.8,rel:99,rides:340,asks:{COME:390,PICK:230}},
+         {name:"Malthen",cls:"WARLOCK",lvl:58,place:"Blackrock Mountain",city:null,rating:4.7,rel:96,rides:90,asks:{SUM:380}}],
+    bal:[{name:"Arvessa",cls:"MAGE",lvl:58,place:"Stormwind",city:"SW",rating:4.8,rel:97,rides:140,asks:{COME:320,PICK:170}},
+         {name:"Doran",cls:"MAGE",lvl:44,place:"Ironforge",city:"IF",rating:4.5,rel:88,rides:25,asks:{PICK:140}},
+         {name:"Malthen",cls:"WARLOCK",lvl:58,place:"Blackrock Mountain",city:null,rating:4.7,rel:96,rides:90,asks:{SUM:300}},
+         {name:"Sereth",cls:"WARLOCK",lvl:45,place:"Gadgetzan · Tanaris",city:null,rating:4.5,rel:93,rides:41,asks:{SUM:240}}],
+    many:[{name:"Arvessa",cls:"MAGE",lvl:58,place:"Stormwind",city:"SW",rating:4.8,rel:99,rides:340,asks:{COME:250,PICK:140}},
+          {name:"Doran",cls:"MAGE",lvl:44,place:"Ironforge",city:"IF",rating:4.5,rel:88,rides:25,asks:{PICK:110}},
+          {name:"Liora",cls:"MAGE",lvl:60,place:"Stormwind",city:"SW",rating:4.9,rel:97,rides:150,asks:{COME:220,PICK:120}},
+          {name:"Fenwick",cls:"MAGE",lvl:52,place:"Ironforge",city:"IF",rating:4.4,rel:93,rides:60,asks:{COME:230,PICK:130}},
+          {name:"Grivus",cls:"WARLOCK",lvl:38,place:"Ironforge",city:"IF",rating:4.6,rel:95,rides:30,asks:{SUM:150}},
+          {name:"Malthen",cls:"WARLOCK",lvl:58,place:"Blackrock Mountain",city:null,rating:4.7,rel:96,rides:90,asks:{SUM:220}},
+          {name:"Sereth",cls:"WARLOCK",lvl:45,place:"Gadgetzan · Tanaris",city:null,rating:4.5,rel:93,rides:41,asks:{SUM:180}}]
+  };
+  const RUSK=p=>({id:"r6",name:"Rusk",place:"Sentinel Hill · Westfall",resting:false,dest:"SW",kind:"BID",price:p,svcs:["PICK"],owes:120,exp:45});
+  const NPC_RA={
+    few:[{id:"r1",name:"Hollis",place:"Booty Bay · Salty Sailor Tavern",resting:true,dest:"SW",kind:"BID",price:380,svcs:["COME","SUM"],exp:41},
+         {id:"r2",name:"Mirelle",place:"Southshore Inn",resting:true,dest:"IF",kind:"HAIL",price:450,svcs:["COME","SUM","PICK"],exp:25},
+         {id:"r3",name:"Tobin",place:"Darkshire · Duskwood",resting:false,dest:"SW",kind:"BID",price:260,svcs:["SUM","PICK"],late:1,exp:62},
+         {id:"r4",name:"Kelden",place:"Menethil Harbor Inn",resting:true,dest:"SW",kind:"BID",price:400,svcs:["COME","SUM"],exp:50},
+         {id:"r5",name:"Annick",place:"Auberdine Inn",resting:true,dest:"DN",kind:"HAIL",price:500,svcs:["COME","SUM"],exp:33},RUSK(300)],
+    bal:[{id:"r1",name:"Hollis",place:"Booty Bay · Salty Sailor Tavern",resting:true,dest:"SW",kind:"BID",price:320,svcs:["COME","SUM"],exp:41},
+         {id:"r2",name:"Mirelle",place:"Southshore Inn",resting:true,dest:"IF",kind:"HAIL",price:350,svcs:["COME","SUM","PICK"],exp:25},
+         {id:"r3",name:"Tobin",place:"Darkshire · Duskwood",resting:false,dest:"SW",kind:"BID",price:180,svcs:["SUM","PICK"],late:1,exp:62},RUSK(220)],
+    many:[{id:"r1",name:"Hollis",place:"Booty Bay · Salty Sailor Tavern",resting:true,dest:"SW",kind:"BID",price:220,svcs:["COME","SUM"],exp:41},
+          {id:"r3",name:"Tobin",place:"Darkshire · Duskwood",resting:false,dest:"SW",kind:"BID",price:150,svcs:["SUM","PICK"],late:1,exp:62},RUSK(140)]
+  };
+  const NPCDISP={Arvessa:[12,2],Doran:[50,25],Liora:[18,7],Fenwick:[28,14],Grivus:[22,30],Malthen:[30,8],Sereth:[35,16]};
+  Object.values(NPC_DA).forEach(list=>list.forEach(n=>{[n.resp,n.wait]=NPCDISP[n.name];}));
+  const HCITY={SW:"OG",IF:"UC",DN:"TB"};
+  const HNAME={Arvessa:"Zandra",Doran:"Krosh",Liora:"Selvi",Fenwick:"Tarn",Grivus:"Gazrik",Malthen:"Vorgash",Sereth:"Ilyara",Hollis:"Nakri",Mirelle:"Durga",Tobin:"Hesh",Kelden:"Brakka",Annick:"Yonna",Rusk:"Skarn"};
+  const HPLACE={"Stormwind":"Orgrimmar","Ironforge":"Undercity","Southshore Inn":"Tarren Mill Inn","Darkshire · Duskwood":"Thousand Needles","Menethil Harbor Inn":"Hammerfall Inn","Auberdine Inn":"Sun Rock Retreat Inn","Sentinel Hill · Westfall":"Ratchet · The Barrens"};
+  const toH=o=>Object.assign({},o,{name:HNAME[o.name]||o.name,place:HPLACE[o.place]||o.place},o.dest?{dest:HCITY[o.dest]}:{},o.city?{city:HCITY[o.city]}:{},o.id?{id:"h"+o.id}:{});
+  const mirror=src=>Object.fromEntries(Object.entries(src).map(([k,v])=>[k,v.map(toH)]));
+  const NPC_D={A:NPC_DA,H:mirror(NPC_DA)},NPC_R={A:NPC_RA,H:mirror(NPC_RA)};
+  const WEEK=[["Thu",900,3],["Fri",1400,5],["Sat",1850,6],["Sun",2100,7],["Mon",700,2],["Tue",1050,4],["Wed",1150,5]];
+  const RIDES={
+    A:[["14:12","Doriel","Darkshire → Stormwind","COME",300,5],["13:40","Penwick","Ironforge → Darnassus","PICK",200,5],["12:05","Saela","Theramore → Ironforge","COME",310,4],["11:31","Corwin","Ironforge → Stormwind","PICK",150,5]],
+    H:[["14:02","Kragg","Tarren Mill → Undercity","COME",300,5],["13:15","Yalla","Orgrimmar → Thunder Bluff","PICK",200,5],["12:40","Drek","Ratchet → Orgrimmar","COME",310,4],["11:58","Hesh","Orgrimmar → Undercity","PICK",150,5]]
+  };
+
+  const S={me:"brennwick",simFac:"A",tab:"ride",market:"bal",open:true,
+    dest:"SW",walk:false,how:"hail",max:350,bid:180,
+    asks:{velvetmoon:{COME:280,PICK:150},quillra:{COME:260,PICK:120},noxvell:{SUM:200},ashveil:{COME:270,PICK:140},vexira:{COME:250,PICK:110},morgrith:{SUM:190}},
+    auto:{},skipOwing:{},duty:{},sumAny:{noxvell:true,morgrith:true},
+    penalty:{},dnotice:null,debt:null,
+    dtab:"req",R:null,taken:new Set(),log:[],rwKey:null,stars:0};
+  Object.keys(S.asks).forEach(k=>{S.auto[k]=true;S.skipOwing[k]=true;S.duty[k]=true;});
+
+  const $=id=>document.getElementById(id);
+  const view=$("view");
+  const ICONS={
+    WARRIOR:`<svg viewBox="0 0 62 62"><rect width="62" height="62" fill="#2a2116"/><circle cx="31" cy="31" r="20" fill="#3b2f1f" stroke="#b8963a" stroke-width="2"/><polygon points="31,10 35,31 31,52 27,31" fill="#ffd100"/><polygon points="10,31 31,27 52,31 31,35" fill="#b8963a"/><circle cx="31" cy="31" r="3" fill="#1a140c"/></svg>`,
+    MAGE:`<svg viewBox="0 0 62 62"><rect width="62" height="62" fill="#0f2238"/><circle cx="31" cy="31" r="22" fill="#163a5e"/><polygon points="31,11 48,41 14,41" fill="none" stroke="#3fc7eb" stroke-width="2.5"/><polygon points="31,51 14,21 48,21" fill="none" stroke="#bdf0ff" stroke-width="2.5"/><circle cx="31" cy="31" r="5" fill="#e8fbff"/></svg>`,
+    WARLOCK:`<svg viewBox="0 0 62 62"><rect width="62" height="62" fill="#1d1430"/><circle cx="31" cy="31" r="22" fill="#2c1f4a"/><path d="M31 12c4 8 12 12 12 22a12 12 0 0 1-24 0c0-5 3-8 5-11 1 4 3 6 5 6-2-6 0-12 2-17z" fill="#6fd14a"/><path d="M31 28c2 4 5 6 5 10a5 5 0 0 1-10 0c0-3 3-6 5-10z" fill="#d8ffb8"/></svg>`
+  };
+
+  /* city emblems: original heraldic drawings */
+  const EMB={
+    SW:`<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#1d3c8f"/><circle cx="32" cy="32" r="27" fill="#244aa8"/>
+      <g fill="#e9c46a"><rect x="11" y="28" width="10" height="24"/><rect x="11" y="24" width="2.4" height="5"/><rect x="14.8" y="24" width="2.4" height="5"/><rect x="18.6" y="24" width="2.4" height="5"/>
+      <rect x="43" y="28" width="10" height="24"/><rect x="43" y="24" width="2.4" height="5"/><rect x="46.8" y="24" width="2.4" height="5"/><rect x="50.6" y="24" width="2.4" height="5"/>
+      <rect x="21" y="36" width="22" height="16"/><rect x="26" y="18" width="12" height="34"/><polygon points="24.5,19 32,6 39.5,19"/></g>
+      <path d="M28.5 52v-7a3.5 3.5 0 0 1 7 0v7z" fill="#122a66"/><rect x="30.5" y="23" width="3" height="6" rx="1.5" fill="#122a66"/>
+      <rect x="8" y="52" width="48" height="3" fill="#c9a24a"/></svg>`,
+    IF:`<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#4a1d12"/><circle cx="32" cy="38" r="24" fill="#6b2a15"/><circle cx="32" cy="44" r="13" fill="#b5501f" opacity=".5"/>
+      <g transform="rotate(-38 30 22)"><rect x="29" y="7" width="4" height="25" rx="1" fill="#8a5a2b"/><rect x="21" y="5" width="20" height="9" rx="1.5" fill="#e6e0d4"/><rect x="21" y="5" width="20" height="3" fill="#ffffff" opacity=".35"/></g>
+      <path d="M10 33h34l9 2.5-9 3c-1.5 3.5-6 5.5-10 5.5v5h7v5H22v-5h7v-5c-8 0-14-4.5-19-11z" fill="#cfc6b6"/>
+      <path d="M10 33h34l9 2.5" fill="none" stroke="#ffffff" stroke-opacity=".45" stroke-width="1"/>
+      <circle cx="48" cy="27" r="1.6" fill="#ffb347"/><circle cx="52" cy="23" r="1.1" fill="#ffd27a"/><circle cx="45" cy="21" r="1" fill="#ff9a3c"/></svg>`,
+    DN:`<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#2a1f52"/><circle cx="32" cy="32" r="27" fill="#352869"/>
+      <circle cx="45" cy="16" r="8" fill="#e3e9ff"/><circle cx="48.5" cy="13.5" r="7" fill="#352869"/>
+      <circle cx="13" cy="15" r="1" fill="#e3e9ff"/><circle cx="21" cy="9" r=".8" fill="#e3e9ff"/><circle cx="54" cy="33" r=".8" fill="#e3e9ff"/>
+      <path d="M29 56c1.5-7 1.5-15 0-24h6c-1.5 9-1.5 17 0 24z" fill="#a993e0"/>
+      <path d="M29.5 41c-4-2-7-2-10 0M34.5 39c4-2 7-1 9 1" stroke="#a993e0" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <g fill="#6fcfb6"><circle cx="22" cy="31" r="8"/><circle cx="31" cy="24" r="10"/><circle cx="41" cy="30" r="8"/><circle cx="32" cy="33" r="7"/></g>
+      <g fill="#a6ecd9" opacity=".7"><circle cx="28" cy="21" r="3"/><circle cx="20" cy="29" r="2.5"/></g>
+      <rect x="8" y="55" width="48" height="2" fill="#7c68c4"/></svg>`,
+    OG:`<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#4f130c"/><circle cx="32" cy="30" r="27" fill="#7a2216"/>
+      <g transform="rotate(32 32 30)"><rect x="30.5" y="8" width="3" height="42" rx="1" fill="#6b4a2a"/><path d="M33.5 10c10 0 14 6 14 13-6-3-10-3-14-1z" fill="#d2c9b8"/></g>
+      <g transform="rotate(-32 32 30)"><rect x="30.5" y="8" width="3" height="42" rx="1" fill="#6b4a2a"/><path d="M30.5 10c-10 0-14 6-14 13 6-3 10-3 14-1z" fill="#d2c9b8"/></g>
+      <path d="M6 58 10 47 14 58 18 47 22 58 26 47 30 58 34 47 38 58 42 47 46 58 50 47 54 58 58 47 58 64H6z" fill="#2a0b07"/></svg>`,
+    UC:`<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#141d17"/><circle cx="32" cy="32" r="27" fill="#1f3326"/>
+      <circle cx="32" cy="42" r="15" fill="#5fd06a" opacity=".22"/>
+      <path d="M17 57V35a15 15 0 0 1 30 0v22h-6V36a9 9 0 0 0-18 0v21z" fill="#8f978c"/>
+      <path d="M23 57V36a9 9 0 0 1 18 0v21z" fill="#0c140f"/>
+      <path d="M26 57c0-6 2-9 6-12 4 3 6 6 6 12z" fill="#6fe07a" opacity=".6"/>
+      <path d="M21 17l4 5 7-9 7 9 4-5-2 9H23z" fill="#d9c27a"/>
+      <rect x="10" y="56" width="44" height="2" fill="#4c5a4c"/></svg>`,
+    TB:`<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#7a3e16"/><circle cx="32" cy="32" r="27" fill="#bf6a2a"/><circle cx="47" cy="17" r="6" fill="#ffd27a"/>
+      <path d="M5 58V40h12v-4h10v22z" fill="#5a2e14"/><path d="M38 58V36h8v-6h13v28z" fill="#5a2e14"/>
+      <rect x="29" y="22" width="6" height="36" fill="#e6d2a8"/><rect x="29" y="31" width="6" height="3" fill="#7a3a1a"/><rect x="29" y="41" width="6" height="3" fill="#2d6a8a"/>
+      <path d="M32 15c-7 0-13 3-17 8 5-1 10-1 14 1h6c4-2 9-2 14-1-4-5-10-8-17-8z" fill="#2d6a8a"/>
+      <circle cx="32" cy="19" r="3.2" fill="#e6d2a8"/></svg>`
+  };
+  EMB.ANY=`<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#1d1430"/><circle cx="32" cy="32" r="27" fill="#2c1f4a"/><circle cx="32" cy="32" r="19" fill="none" stroke="#8788ee" stroke-width="2.5"/>
+      <path d="M32 14 42.6 46.6 14.9 26.4h34.2L21.4 46.6z" fill="none" stroke="#b9a6ff" stroke-width="2" stroke-linejoin="round"/><circle cx="32" cy="32" r="4" fill="#6fd14a"/></svg>`;
+  const SICON={
+    COME:`<svg viewBox="0 0 16 16" class="si" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.6a3.4 3.4 0 1 1-3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+    PICK:`<svg viewBox="0 0 16 16" class="si" aria-hidden="true"><ellipse cx="5.3" cy="10.2" rx="2.2" ry="3.3" fill="currentColor"/><ellipse cx="10.7" cy="5.8" rx="2.2" ry="3.3" fill="currentColor"/></svg>`,
+    SUM:`<svg viewBox="0 0 16 16" class="si" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 2.6 12.7 10.8H3.3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>`
+  };
+  const HICON={
+    hail:`<svg viewBox="0 0 16 16" class="si" aria-hidden="true"><path d="M8 1.8a4 4 0 0 0-4 4v3.2L2.6 11h10.8L12 9V5.8a4 4 0 0 0-4-4z" fill="currentColor"/><circle cx="8" cy="13.4" r="1.4" fill="currentColor"/></svg>`,
+    bid:`<svg viewBox="0 0 16 16" class="si" aria-hidden="true"><ellipse cx="8" cy="11.5" rx="5.5" ry="2" fill="currentColor"/><ellipse cx="8" cy="8.5" rx="5.5" ry="2" fill="currentColor" opacity=".8"/><ellipse cx="8" cy="5.5" rx="5.5" ry="2" fill="currentColor" opacity=".6"/></svg>`,
+    browse:`<svg viewBox="0 0 16 16" class="si" aria-hidden="true"><rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/><rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/><rect x="2" y="11" width="8" height="2" rx="1" fill="currentColor"/></svg>`
+  };
+  const emb=(id,cls)=>`<span class="emblem ${cls||""}" aria-hidden="true">${EMB[id]}</span>`;
+  const facPill=f=>`<span class="pill ${FAC[f].cls}">${FAC[f].name}</span>`;
+
+  /* ---------- helpers ---------- */
+  function money(c){const neg=c<0;c=Math.abs(c);const g=Math.floor(c/100),s=c%100;return `<span class="money">${neg?"−":""}${g}<i class="g"></i>${String(s).padStart(2,"0")}<i class="s"></i></span>`;}
+  function gs(c){const g=Math.floor(c/100),s=c%100;return g&&s?`${g}g ${s}s`:g?`${g}g`:`${s}s`;}
+  const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const me=()=>CHARS[S.me];
+  const portals=c=>c.cls==="MAGE"?(c.spells||[]).filter(id=>CITY[id].fac===c.fac):[];
+  const canDrive=c=>(c.cls==="MAGE"&&portals(c).length>0)||(c.cls==="WARLOCK"&&!!c.ritual);
+  const placeOf=c=>c.resting?c.place:c.away;
+  const trusted=o=>o.rides>=25&&o.rel>=97;
+  const debtOf=key=>S.debt&&S.debt.key===key?S.debt:null;
+  function services(c){
+    const o=[];
+    if(c.cls==="MAGE"&&portals(c).length&&c.runes>0){if(c.scroll>0&&c.resting)o.push("COME");o.push("PICK");}
+    if(c.cls==="WARLOCK"&&c.ritual&&(c.helpers||0)>=2&&c.shards>0)o.push("SUM");
+    return o;
+  }
+  function pauses(c){
+    const p=[];
+    if(c.cls==="MAGE"){if(!c.runes)p.push("No Rune of Portals in your bags: every portal is paused");else{if(!c.scroll)p.push("Come-to-you paused: no Scroll of Liminal Passage");else if(!c.resting)p.push("Come-to-you paused: you're not resting");}}
+    if(c.cls==="WARLOCK"){if(!c.shards)p.push("No Soul Shard in your bags: summons are paused");else if(!sumDest(c).length&&!S.sumAny[c.key])p.push("Summons paused: you're not in a city and Summon pickup (anywhere) is off");}
+    return p;
+  }
+  const possible=c=>c.cls==="MAGE"?["COME","PICK"]:c.cls==="WARLOCK"?["SUM"]:[];
+  const sumDest=c=>c.resting&&c.city?[c.city]:[];
+  function allowed(c,walk){
+    if(debtOf(c.key))return ["PICK"];
+    const a=[];if(c.resting)a.push("COME");a.push("SUM");if(walk)a.push("PICK");return a;
+  }
+  function addLog(k,m){S.log.push([k,m]);if(S.log.length>18)S.log.shift();}
+  const relTag=o=>`${o.rel}%${trusted(o)?' <span class="tag on">Trusted</span>':""}`;
+
+  function offers(){
+    const f=me().fac,out=[];
+    Object.values(CHARS).forEach(c=>{
+      if(c.fac!==f||c.key===S.me||!canDrive(c)||!S.duty[c.key])return;
+      services(c).forEach(sv=>out.push({who:c.name,key:c.key,cls:c.cls,lvl:c.lvl,place:placeOf(c),rating:c.rating,rel:c.rel,rides:c.rides,resp:c.resp,wait:c.wait,pen:!!S.penalty[c.key],svc:sv,price:S.asks[c.key][sv],spot:placeOf(c),any:sv==="SUM"&&!!S.sumAny[c.key],
+        dests:sv==="SUM"?sumDest(c):portals(c),auto:S.auto[c.key]}));
+    });
+    NPC_D[f][S.market].forEach(n=>Object.entries(n.asks).forEach(([sv,a])=>out.push({who:n.name,key:null,cls:n.cls,lvl:n.lvl,place:n.place,rating:n.rating,rel:n.rel,rides:n.rides,resp:n.resp,wait:n.wait,pen:false,svc:sv,price:a,spot:n.place,any:sv==="SUM",
+      dests:sv==="SUM"?(n.city?[n.city]:[]):citiesOf(f).filter(x=>n.lvl>=x.lvl).map(x=>x.id),auto:true})));
+    out.forEach(o=>{o.eta=etaOf(o);o.rank=rankOf(o);});
+    return out;
+  }
+  /* dispatch: ETA in seconds, and the taxi rank (minutes waiting, +3 if Trusted, -10 after a cancel) */
+  function etaOf(o){return o.svc==="PICK"?600+o.resp*4:o.resp+(o.svc==="SUM"?15:10);}
+  function rankOf(o){return o.wait+(trusted(o)?3:0)-(o.pen?10:0);}
+  const fmtEta=s=>s<120?`~${s} s`:`~${Math.round(s/60)} min`;
+  const TIE=15;
+  /* hail: fastest wins; taxis within 15 s of the fastest are a tie, and the longest-waiting one wins it */
+  function hailOrder(c){
+    if(!c.length)return [];
+    const min=Math.min(...c.map(o=>o.eta));
+    const tie=c.filter(o=>o.eta<=min+TIE).sort((a,b)=>b.rank-a.rank),rest=c.filter(o=>o.eta>min+TIE).sort((a,b)=>a.eta-b.eta);
+    return tie.concat(rest);
+  }
+  /* posted price: among taxis at or under it, the one waiting longest in the rank takes it */
+  const byRank=(a,b)=>b.rank-a.rank;
+  function linePos(dest,price,svcs){
+    const ahead=openRequests().filter(r=>!r.live&&r.dest===dest&&r.kind==="BID"&&r.price>price&&r.svcs.some(v=>svcs.includes(v)));
+    return {pos:ahead.length+1,top:ahead.length?Math.max(...ahead.map(r=>r.price)):0};
+  }
+  const fitting=(dest,svcs)=>offers().filter(o=>svcs.includes(o.svc)&&o.dests.includes(dest));
+  function openRequests(){
+    const f=me().fac,out=NPC_R[f][S.market].filter(r=>!S.taken.has(r.id)).map(r=>Object.assign({},r));
+    const R=S.R;
+    if(R&&R.fac===f&&R.step===1&&!R.cancel&&R.riderKey!==S.me){const d=debtOf(R.riderKey);
+      out.unshift({id:"live",name:R.rider,place:R.riderPlace,resting:R.riderResting,dest:R.dest,kind:R.kind,price:R.price,svcs:R.svcs,owes:d?d.amount:0,exp:58,live:true});}
+    return out;
+  }
+  function evalReq(r){
+    const c=me(),offer=services(c);
+    if(r.owes&&S.skipOwing[c.key])return {ok:false,why:`Owes ${gs(r.owes)} from a late cancel, and you skip riders who owe gold`};
+    const mine=["COME","SUM","PICK"].filter(sv=>offer.includes(sv)&&r.svcs.includes(sv)&&(sv==="SUM"?sumDest(c).includes(r.dest):portals(c).includes(r.dest))&&(sv!=="COME"||r.resting));
+    if(!mine.length){
+      let why="Doesn't match what you offer right now";
+      if(c.cls==="MAGE"&&!c.runes)return {ok:false,why:"You have no Rune of Portals"};
+      if(c.cls==="WARLOCK"&&!c.shards)return {ok:false,why:"You have no Soul Shard"};
+      if(c.cls==="MAGE"&&!portals(c).includes(r.dest))why=c.lvl>=CITY[r.dest].lvl?`You haven't learned Portal: ${CITY[r.dest].name} yet`:`Portal: ${CITY[r.dest].name} needs Mage ${CITY[r.dest].lvl}`;
+      else if(c.cls==="WARLOCK")why=sumDest(c).length?`You summon to ${CITY[c.city].name}, they want ${CITY[r.dest].name}`:"You're not in a city, nothing to summon to";
+      else if(!r.svcs.includes("PICK"))why=!offer.includes("COME")?(c.scroll?"You're not resting, Come-to-you is paused":"No scroll in your bags, and they won't walk"):"They aren't resting, so no Come-to-you";
+      return {ok:false,why};
+    }
+    const sv=mine[0],ask=S.asks[c.key][sv];
+    if(r.kind==="HAIL"&&ask>r.price)return {ok:false,sv,ask,why:`Your ${SVCS[sv]} price ${gs(ask)} is over their max`};
+    return {ok:true,sv,ask,earn:r.kind==="HAIL"?ask:r.price,below:r.kind!=="HAIL"&&r.price<ask};
+  }
+  function standing(r){
+    if(r.owes)return `<span class="no">owes ${gs(r.owes)}</span>`;
+    if(r.late)return `<span class="warnt">${r.late} late cancel</span>`;
+    return `<span class="yes">good standing</span>`;
+  }
+  function gauge(dest){
+    const offs=dest?offers().filter(o=>o.dests.includes(dest)):offers();
+    const drivers=new Set(offs.map(o=>o.who)).size;
+    const reqs=openRequests().filter(r=>!dest||r.dest===dest);
+    const riders=reqs.length+(S.R&&S.R.step===1&&!S.R.cancel&&S.R.riderKey===S.me&&(!dest||S.R.dest===dest)?1:0);
+    const asks=offs.map(o=>o.price).sort((a,b)=>a-b);
+    const ratio=riders/Math.max(1,drivers);
+    const mood=ratio>1.1?["up","Few taxis: prices are up"]:ratio<0.6?["down","Lots of taxis: prices are down"]:["even","Balanced market"];
+    const typical=asks.length?asks[Math.floor(asks.length/2)]:0;
+    const tot=Math.max(1,drivers+riders);
+    return {drivers,riders,asks,typical,mood,html:`<div class="card">
+      <div class="kv"><span>${dest?CITY[dest].name:`${FAC[me().fac].name} network`} right now</span><span class="mood ${mood[0]}">${mood[1]}</span></div>
+      <div class="gauge" aria-hidden="true"><i class="sup" style="width:${drivers/tot*100}%"></i><i class="dem" style="width:${riders/tot*100}%"></i></div>
+      <div class="legend"><span class="s">${drivers} taxi${drivers===1?"":"s"}</span><span class="d">${riders} rider${riders===1?"":"s"} waiting</span></div>
+      ${asks.length?`<div class="kv"><span>Taxis ask</span><span>${money(asks[0])} – ${money(asks[asks.length-1])}</span></div><div class="kv"><span>Typical price</span>${money(typical)}</div>`:`<div class="note">No taxi can serve this right now.</div>`}
+    </div>`};
+  }
+  const steps=n=>`<div class="steps">${[0,1,2,3,4,5].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</div>`;
+  function stepper(id,val,label,sub){
+    return `<div class="pricebox"><span class="lbl">${label}${sub?`<small>${sub}</small>`:""}</span>
+      <span class="stepper"><button id="${id}-dn" data-adj="${id}:-20" aria-label="Lower ${label}">−</button><b>${money(val)}</b><button id="${id}-up" data-adj="${id}:20" aria-label="Raise ${label}">+</button></span></div>`;
+  }
+  function castBar(R,who){
+    if(!R.casting)return "";
+    const name={scroll:"Scroll of Liminal Passage",portal:`Portal: ${dName(R)}`,summon:"Ritual of Summoning"}[R.casting];
+    const el=Math.min(CAST_MS,Date.now()-R.castStart);
+    return `<div class="cast"><span class="cast-name">${who}: ${name}</span><div class="cast-track"><i style="animation-delay:-${el}ms"></i></div>
+      <span class="note">Live, read from the party unit's cast events.</span></div>`;
+  }
+  const riderResting=R=>R.riderKey?CHARS[R.riderKey].resting:R.riderResting;
+  const feeFor=R=>(R.scrollUsed||R.summonStarted)?Math.max(50,Math.round(R.price*0.5/10)*10):0;
+  function readout(c){
+    const parts=[facPill(c.fac),`<span class="pill">${c.race} ${CLS[c.cls]} ${c.lvl}</span>`,`<span class="pill">${placeOf(c)}</span>`,c.resting?'<span class="pill ok">Resting</span>':'<span class="pill bad">Not resting</span>',`<span class="pill">${gs(c.gold)} in bags</span>`];
+    return parts.join("");
+  }
+
+  /* ---------- ride lifecycle ---------- */
+  function startRide(kind,price){
+    const c=me();
+    S.R={fac:c.fac,rider:c.name,riderKey:c.key,riderPlace:placeOf(c),riderResting:c.resting,dest:S.dest,kind,price,svcs:allowed(c,S.walk),step:1,driver:null};
+    const v=kind==="HAIL"?`max=${price}`:`price=${price}`;
+    addLog("dim",`  GetMoney()=${c.gold} ≥ ${price} ✓ checked before sending`);
+    if(kind!=="BOOK")addLog("me",`> ${kind.padEnd(5)} id=7f3a from=${c.name} fac=${c.fac} dest=${S.dest} svc=${S.R.svcs.join(",")} ${v} rest=${c.resting?1:0}`);
+  }
+  function match(o,price,how){
+    Object.assign(S.R,{driver:o.who,driverKey:o.key,driverCls:o.cls,driverLvl:o.lvl,driverPlace:o.place,driverRel:o.rel,driverTrusted:trusted(o)&&!o.pen,
+      svc:o.svc,price,step:2,casting:null,paid:false,scrollUsed:false,summonStarted:false,summonReady:false,confirmCancel:false,notice:null});
+    if(S.R.kind==="BOOK")addLog("me",`> BOOK  id=7f3a to=${o.who} svc=${o.svc} dest=${S.R.dest} price=${price}`);
+    else addLog("in",`< TAKE  id=7f3a by=${o.who} svc=${o.svc} price=${price}${how?` (${how})`:""}`);
+    addLog("in",`< W ${o.who}: PARTY invite (auto)`);
+    addLog("dim",`  ${S.R.rider} auto-accepts the matched taxi · party formed`);
+  }
+  function cast(kind){
+    const R=S.R;R.casting=kind;R.castStart=Date.now();
+    const name={scroll:"Scroll of Liminal Passage",portal:`Portal: ${dName(R)}`,summon:"Ritual of Summoning"}[kind];
+    addLog("in",`  party1 UNIT_SPELLCAST_START "${name}"`);
+    if(kind==="scroll"){R.scrollUsed=true;if(R.driverKey)CHARS[R.driverKey].scroll=Math.max(0,CHARS[R.driverKey].scroll-1);}
+    if(kind==="summon"){R.summonStarted=true;if(R.driverKey)CHARS[R.driverKey].shards=Math.max(0,CHARS[R.driverKey].shards-1);}
+    if(kind==="portal"&&R.driverKey)CHARS[R.driverKey].runes=Math.max(0,CHARS[R.driverKey].runes-1);
+    const ride=R;
+    setTimeout(()=>{
+      if(S.R!==ride||ride.cancel)return;
+      ride.casting=null;
+      if(kind==="scroll"){addLog("in",`< W ${ride.driver}: LIMINAL ok · arrived "${ride.riderPlace}"`);advance(3);}
+      else if(kind==="summon"){ride.summonReady=true;addLog("in",`  summon offered to ${ride.rider}`);render();}
+      else {addLog("in",`  portal ${ride.dest} open · 60s`);advance(4);}
+    },CAST_MS);
+  }
+  function advance(n){
+    const R=S.R;R.step=n;
+    if(n===3){
+      if(R.svc==="SUM")addLog("in",`< W ${R.driver}: SUMMON ok · arrived "${dName(R)}"`);
+      else if(R.svc==="PICK")addLog("me",`> W ${R.driver}: ARRIVED`);
+      addLog("in",`  InitiateTrade(${R.driver}) · SetTradeMoney(${R.price}) on the rider's side`);
+    }
+    if(n===5){addLog("me",`> W ${R.driver}: DONE`);if(R.driverKey){CHARS[R.driverKey].wait=0;addLog("dim",`  ${R.driver} goes to the back of the taxi rank`);}}
+    render();
+  }
+  function pay(){
+    const R=S.R;R.paid=true;
+    if(R.riderKey)CHARS[R.riderKey].gold-=R.price;
+    if(R.driverKey)CHARS[R.driverKey].gold+=R.price;
+    addLog("in",`  trade complete · GetTargetTradeMoney()=${R.price} ✓`);
+    if(R.svc==="SUM")advance(5);else render();
+  }
+  function riderCancel(){
+    const R=S.R,fee=feeFor(R);
+    if(!fee){addLog("me",`> CANCEL id=7f3a by=rider (free, before the taxi spent anything)`);S.R=null;return;}
+    R.cancel={by:"rider",fee,paid:false,near:R.scrollUsed};R.casting=null;
+    S.debt={key:R.riderKey,to:R.driver,amount:fee};
+    addLog("me",`> CANCEL id=7f3a by=rider late · fee=${fee} owed to ${R.driver}`);
+    addLog("dim",`  ${R.driver}'s addon broadcasts DEBT ${R.rider} ${fee}`);
+  }
+  function payFee(){
+    const d=S.debt;if(!d)return;
+    if(CHARS[d.key]){if(CHARS[d.key].gold<d.amount)return;CHARS[d.key].gold-=d.amount;}
+    addLog("in",`  trade complete · fee ${d.amount} ✓ · ${d.to} broadcasts CLEAR ${CHARS[d.key]?CHARS[d.key].name:""}`);
+    if(S.R&&S.R.cancel)S.R.cancel.paid=true;
+    S.debt=null;
+  }
+  function driverCancel(){
+    const R=S.R,c=me(),before=c.rel;
+    c.rel=Math.max(0,c.rel-1);S.penalty[c.key]=true;
+    addLog("me",`> CANCEL id=7f3a by=taxi · reliability ${before}% → ${c.rel}% · rank −10 for 30 min`);
+    S.dnotice=`You cancelled the ride with ${R.rider}. Reliability ${before}% → ${c.rel}%, and you lose 10 points in the taxi rank for 30 minutes.`;
+    if(R.riderKey){
+      Object.assign(R,{step:1,driver:null,driverKey:null,svc:null,casting:null,paid:false,scrollUsed:false,summonStarted:false,summonReady:false,confirmCancel:false,
+        notice:`${c.name} cancelled. Your request is back on the board and you owe nothing.`});
+      addLog("dim",`  ${R.rider}'s request goes back on the board`);
+    } else S.R=null;
+  }
+
+  /* ---------- rider view ---------- */
+  function vRideForm(){
+    const c=me(),busy=S.R&&S.R.step<5&&!(S.R.cancel);
+    const svcs=allowed(c,S.walk),fit=fitting(S.dest,svcs),g=gauge(S.dest),debt=debtOf(c.key);
+    const you=`<div class="whoami"><span class="c-${c.cls}" style="font-weight:600">${c.name}</span>${readout(c)}${debt?`<span class="pill bad">Owes ${gs(debt.amount)}</span>`:""}</div>`;
+    const sumList=offers().filter(o=>o.svc==="SUM"&&o.any&&svcs.includes("SUM")).sort((a,b)=>a.eta-b.eta);
+    const anyTile=`<button class="city ${S.dest==="ANY"?"on":""}" id="dest-ANY" data-dest="ANY" role="radio" aria-checked="${S.dest==="ANY"}">${emb("ANY")}<span class="cname">Summon</span><span class="cfrom">${sumList.length?`${sumList.length} warlock${sumList.length>1?"s":""}`:"none now"}</span></button>`;
+    const tiles=`<div class="cities four" role="radiogroup" aria-label="Destination">${citiesOf(c.fac).map(x=>{
+      const f=fitting(x.id,svcs),lo=f.length?Math.min(...f.map(o=>o.price)):0,on=S.dest===x.id;
+      return `<button class="city ${on?"on":""}" id="dest-${x.id}" data-dest="${x.id}" role="radio" aria-checked="${on}">${emb(x.id)}<span class="cname">${x.name}</span><span class="cfrom">${f.length?`from ${gs(lo)}`:"no taxi now"}</span></button>`;}).join("")}${anyTile}</div>`;
+    const debtBox=debt?`<div class="confirm"><b class="no">You owe ${gs(debt.amount)} to ${debt.to}</b>
+      <span>From a late cancel. Until it's paid you can only book pickups, where you pay before the portal. Pay in person or by mail; ${debt.to}'s addon clears it when the gold arrives.</span>
+      <button class="btn ghost small" id="pay-fee" ${c.gold<debt.amount?"disabled":""}>${c.gold<debt.amount?`Not enough gold to pay (${gs(c.gold)})`:`Simulate: pay ${gs(debt.amount)} to ${debt.to}`}</button></div>`:"";
+    const busyNote=busy?`<p class="note">This mock runs one ride at a time (${esc(S.R.rider)} → ${dName(S.R)}). Reset to start another.</p>`:"";
+    const why0=canDrive(c)?"":`<p class="note">${c.cls==="MAGE"?"You haven't learned a portal spell yet, so you ride.":c.cls==="WARLOCK"?"You haven't learned Ritual of Summoning yet, so you ride.":`A ${CLS[c.cls]} can't port or summon, so the addon shows you the rider side only.`}</p>`;
+    if(S.dest==="ANY"){
+      const list=sumList.length?`<div class="list">${sumList.map((o,i)=>`<div class="offer">
+          <span class="who"><span class="svc-ico">${SICON.SUM}</span><span class="c-WARLOCK">${o.who}</span> <small>Warlock ${o.lvl} · ★ ${o.rating} · ${relTag(o)}</small></span>
+          <span class="act">${money(o.price)}<button class="btn small" data-sbook="${i}" ${busy||o.price>c.gold?"disabled":""}>${o.price>c.gold?"Not enough gold":"Summon me"}</button></span>
+          <small>${o.dests.length?emb(o.dests[0],"xs"):emb("ANY","xs")} to <b>${o.spot}</b> · ${fmtEta(o.eta)}</small></div>`).join("")}</div>`
+        :`<div class="empty">${debt?"Summons are locked until your cancellation fee is paid.":"No warlock is offering summons right now."}</div>`;
+      return `${you}${debtBox}<div class="sect">Choose your destination</div>${tiles}
+        <div class="cityinfo"><span>Warlocks summon you to wherever they stand: a city, a dungeon entrance, anywhere. Pick by place.</span></div>
+        <div class="sect">Warlocks on duty</div>${list}<p class="note">You pay after you arrive. Works from anywhere, you don't need to be resting.</p>${why0}${busyNote}`;
+    }
+    const svcNote=!debt&&!c.resting?`<p class="note">You're not in an inn or city, so a mage can't teleport to you. You can be summoned${S.walk?" or walk to a taxi":""}.</p>`:"";
+    const poor=v=>v>c.gold?`<div class="confirm"><b class="no">You carry only ${gs(c.gold)}</b><span>Portaxi won't send an offer for more gold than you have in your bags. Lower it, or come back with more gold.</span></div>`:"";
+    let body="";
+    if(S.how==="hail"){
+      const under=hailOrder(fit.filter(o=>o.price<=S.max));
+      body=`${stepper("max",S.max,"Your maximum",`you pay the taxi's own price · you carry ${gs(c.gold)}`)}${poor(S.max)}
+        <div class="note">${under.length?`${under.length} taxi${under.length>1?"s":""} at or under your max. Fastest: <b>${under[0].who}</b>, ${SVCS[under[0].svc]}, ${fmtEta(under[0].eta)}, you pay their ${gs(under[0].price)}.`:`No taxi at or under ${gs(S.max)} right now.${g.asks.length?` The cheapest asks ${gs(g.asks[0])}.`:""}`}</div>
+        <button class="btn" id="go-hail" ${busy||!fit.length||S.max>c.gold?"disabled":""}>Hail a taxi to ${CITY[S.dest].name}</button>`;
+    } else if(S.how==="bid"){
+      const inst=fit.filter(o=>o.price<=S.bid&&o.auto).sort(byRank),lp=linePos(S.dest,S.bid,svcs);
+      body=`${stepper("bid",S.bid,"Your price",`you pay exactly this · higher goes first · you carry ${gs(c.gold)}`)}${poor(S.bid)}
+        <div class="note">${inst.length?`Matches right away: ${inst.length} taxi${inst.length>1?"s":""} take this price, and <b>${inst[0].who}</b> is next in the taxi rank. You pay exactly ${gs(S.bid)}.`:`No taxi takes this price right now, so it waits on the board. You'd be <b>#${lp.pos}</b> in line for ${CITY[S.dest].name}${lp.top?`; offering ${gs(lp.top+10)} puts you first`:""}.${g.typical?` Typical price: ${gs(g.typical)}.`:""}`}</div>
+        <button class="btn" id="go-bid" ${busy||!fit.length||S.bid>c.gold?"disabled":""}>Post ${gs(S.bid)}</button>`;
+    } else {
+      const sorted=fit.slice().sort((a,b)=>a.price-b.price);
+      body=sorted.length?`<div class="list">${sorted.map((o,i)=>`<div class="offer">
+          <span class="who"><span class="svc-ico">${SICON[o.svc]}</span><span class="c-${o.cls}">${o.who}</span> <small>${CLS[o.cls]} ${o.lvl} · ★ ${o.rating} · ${relTag(o)}</small></span>
+          <span class="act">${money(o.price)}<button class="btn small" data-book="${i}" ${busy||o.price>c.gold?"disabled":""}>${o.price>c.gold?"Not enough gold":"Book"}</button></span>
+          <small>${SVCS[o.svc]} · ${o.svc==="PICK"?`walk to ${o.place}`:o.svc==="SUM"?`summons you to ${o.place}`:"comes to you"} · ${fmtEta(o.eta)}</small>
+        </div>`).join("")}</div>`:`<div class="empty">No taxi can serve ${CITY[S.dest].name} for you right now.</div>`;
+    }
+    const why=canDrive(c)?"":`<p class="note">${c.cls==="MAGE"?"You haven't learned a portal spell yet, so you ride.":c.cls==="WARLOCK"?"You haven't learned Ritual of Summoning yet, so you ride.":`A ${CLS[c.cls]} can't port or summon, so the addon shows you the rider side only.`}</p>`;
+    return `${you}${debtBox}
+      <div class="sect">Choose your destination</div>
+      ${tiles}
+      <div class="cityinfo"><span class="mood ${g.mood[0]}">${g.mood[1]}</span><span>${g.drivers} taxi${g.drivers===1?"":"s"} · ${g.riders} waiting${g.typical?` · typical ${gs(g.typical)}`:""}</span></div>
+      ${svcNote}
+      <div class="sect">How to ride</div>
+      <div class="seg ico" role="group" aria-label="How to ride">
+        <button id="how-hail" data-how="hail" aria-pressed="${S.how==="hail"}">${HICON.hail}Hail</button>
+        <button id="how-bid" data-how="bid" aria-pressed="${S.how==="bid"}">${HICON.bid}Name a price</button>
+        <button id="how-browse" data-how="browse" aria-pressed="${S.how==="browse"}">${HICON.browse}Browse</button>
+      </div>
+      ${body}
+      ${debt?"":`<label class="walk"><input type="checkbox" id="walk" ${S.walk?"checked":""}><span>${SICON.PICK} I can walk to the taxi <small>adds cheaper pickups</small></span></label>`}
+      ${why}
+      ${busy?`<p class="note">This mock runs one ride at a time (${esc(S.R.rider)} → ${dName(S.R)}). Reset to start another.</p>`:""}`;
+  }
+  function cancelBlock(R){
+    if(R.paid||R.step>3)return "";
+    const fee=feeFor(R);
+    if(R.confirmCancel)return `<div class="confirm"><b>${fee?`Cancelling now costs ${gs(fee)}`:"Cancelling now is free"}</b>
+      <span>${fee?`${R.driver} has already ${R.svc==="SUM"?"started the ritual":"used a scroll"} for you. The fee is half the ride price and stays on your record until you pay it.`:"The taxi hasn't spent anything yet. Free cancels are limited to 3 per hour."}</span>
+      <div class="btnrow"><button class="btn small" id="confirm-cancel">Cancel the ride</button><button class="btn ghost small" id="keep-ride">Keep the ride</button></div></div>`;
+    return `<button class="btn ghost small" id="ask-cancel" style="align-self:flex-start">Cancel ride${fee?` (fee ${gs(fee)})`:" (free)"}</button>`;
+  }
+  function vRideActive(){
+    const R=S.R,d=dName(R);
+    if(R.cancel){
+      const c=R.cancel;
+      return `${steps(R.step)}<div class="empty"><h3>Ride cancelled</h3><div>${R.driver} had already ${R.svc==="SUM"?"started the ritual":"used a scroll"} for you, so the cancellation fee applies.</div></div>
+        <div class="card"><div class="kv"><span>Fee owed to ${R.driver}</span>${money(c.fee)}</div><div class="kv"><span>Status</span><span>${c.paid?'<span class="yes">paid ✓</span>':'<span class="no">unpaid</span>'}</span></div></div>
+        ${c.paid?`<p class="note">Paid. You're in good standing again.</p>`:`<p class="note">Until it's paid, Come-to-you and summons are locked for you, and taxis see "owes ${gs(c.fee)}" on your requests. Pickups still work, because you pay before the portal.</p>
+          ${c.near?`<button class="btn" id="pay-fee">Pay ${gs(c.fee)} now (${R.driver} is standing next to you)</button>`:""}`}
+        <button class="btn ghost" id="close-ride">${c.paid?"Close":"Pay later"}</button>`;
+    }
+    if(R.step===1){
+      const fit=fitting(R.dest,R.svcs),notice=R.notice?`<div class="confirm"><span>${R.notice}</span></div>`:"";
+      const top=`<div class="ridehead">${emb(R.dest,"md")}<div class="rh-t"><b>${d}</b><small>${R.kind==="HAIL"?`hail · max ${gs(R.price)}`:`your price ${gs(R.price)}`}</small></div></div>`;
+      if(R.kind==="HAIL"){
+        const under=fit.filter(o=>o.price<=R.price);
+        return `${steps(1)}${top}${notice}<div class="empty"><div class="status"><span class="dot pulse"></span>Hailing…</div>
+          <div>${under.length} taxi${under.length===1?"":"s"} at or under ${gs(R.price)} got pinged. The fastest one gets you; when two are within ${TIE} seconds of each other, the one that has waited longer for work wins.</div></div>
+          <button class="btn ghost" id="sim-take" ${under.length?"":"disabled"}>Simulate: taxis answer</button>
+          ${under.length?"":`<button class="btn ghost" id="raise">Raise my max by 50s</button>`}
+          <button class="btn ghost small" id="cancel-free" style="align-self:flex-start">Cancel (free)</button>`;
+      }
+      const cheapest=fit.slice().sort((a,b)=>a.price-b.price)[0],lp=linePos(R.dest,R.price,R.svcs);
+      return `${steps(1)}${top}${notice}<div class="empty"><div class="status"><span class="dot pulse"></span>Your price is on the board</div>
+        <div>${fit.length} taxi${fit.length===1?"":"s"} can see it${cheapest?`, the cheapest asks ${gs(cheapest.price)}`:""}. You're <b>#${lp.pos}</b> in line for ${d}: taxis see the highest prices first.</div></div>
+        ${lp.top?`<button class="btn ghost" id="raise-top" data-to="${lp.top+10}">Offer ${gs(lp.top+10)} to be first</button>`:""}
+        <p class="note">Switch to a taxi character to take it from the other side, or:</p>
+        <button class="btn ghost" id="sim-take" ${fit.length?"":"disabled"}>Simulate: a taxi takes your price</button>
+        <div class="btnrow"><button class="btn ghost" id="raise">Raise by 20s</button><button class="btn ghost" id="cancel-free">Cancel (free)</button></div>`;
+    }
+    const head=`<div class="ridehead">${emb(R.dest,"md")}<div class="rh-t"><b>${d}</b><small>${SICON[R.svc]} ${SVC[R.svc]}</small></div>${money(R.price)}</div>
+      <div class="card"><div class="kv"><span>Your taxi</span><span><span class="c-${R.driverCls}">${R.driver}</span> · ${CLS[R.driverCls]} ${R.driverLvl} · ${R.driverRel}%${R.driverTrusted?' <span class="tag on">Trusted</span>':""}</span></div></div>`;
+    if(R.step===2){
+      if(R.svc==="COME"){
+        const rest=riderResting(R);
+        return `${steps(2)}${head}<ul class="check"><li class="done">Taxi found</li><li class="done">Party formed automatically</li><li class="now">Stay put, ${R.driver} uses Scroll of Liminal Passage</li><li>Trade opens on its own</li><li>Step into the portal</li></ul>
+          ${castBar(R,R.driver)}
+          ${rest?"":`<div class="confirm"><b class="no">You're not resting anymore</b><span>The scroll can't reach you outside an inn or city. ${R.driver}'s addon has greyed out the scroll button. Go back inside or cancel.</span></div>`}
+          ${R.casting?"":`<button class="btn ghost" id="sim-scroll" ${rest?"":"disabled"}>Simulate: ${R.driver} uses the scroll</button>`}
+          ${cancelBlock(R)}`;
+      }
+      if(R.svc==="SUM")return `${steps(2)}${head}<ul class="check"><li class="done">Taxi found</li><li class="done">Party formed automatically</li><li class="now">${R.driver}'s group casts Ritual of Summoning</li><li>Accept the summon</li><li>Trade opens on its own</li></ul>
+        ${castBar(R,R.driver)}
+        ${R.summonReady?`<button class="btn" id="accept-sum">Accept summon to ${d}</button>`:R.casting?"":`<button class="btn ghost" id="sim-summon">Simulate: ${R.driver} starts the ritual</button>`}
+        ${cancelBlock(R)}`;
+      return `${steps(2)}${head}<div class="card"><div class="kv"><span>Meet at</span><span>${R.driverPlace}</span></div><div class="kv"><span>Travel</span><span>about 12 min</span></div></div>
+        <ul class="check"><li class="done">Taxi found</li><li class="done">Party formed automatically</li><li class="now">Go to the taxi (arrow on the minimap)</li><li>Trade opens on its own</li><li>Step into the portal</li></ul>
+        <button class="btn" id="arrive">I'm at the taxi</button>${cancelBlock(R)}`;
+    }
+    if(R.step===3){
+      const win=`<div class="tradewin"><div class="tw-h">Trade · ${R.driver}</div><div class="tw-cols">
+        <div><small>You give</small>${money(R.price)}<span class="note">typed in by Portaxi</span></div>
+        <div><small>${R.driver} gives</small><span>${R.svc==="SUM"?`Summon to ${d} (done)`:`Portal: ${d}`}</span>${R.paid?'<span class="yes">trade complete ✓</span>':""}</div></div></div>`;
+      const short=R.riderKey&&CHARS[R.riderKey].gold<R.price;
+      if(!R.paid)return `${steps(3)}<div class="label">${R.svc==="COME"?`${R.driver} is next to you`:R.svc==="SUM"?`You're in ${d}`:`You're at the taxi`}</div>${win}
+        <p class="note">Portaxi opened the trade and typed in the agreed amount. The click on Trade is yours.</p>
+        ${short?`<div class="confirm"><b class="no">You carry only ${gs(CHARS[R.riderKey].gold)}</b><span>The trade can't complete with less than the agreed ${gs(R.price)}, and the portal stays locked.</span></div>`:""}
+        <button class="btn" id="r-pay" ${short?"disabled":""}>Trade</button>${cancelBlock(R)}`;
+      return `${steps(3)}${win}<p class="note">Paid. ${R.driver}'s addon has confirmed the amount and unlocked the portal.</p>
+        ${castBar(R,R.driver)}${R.casting?"":`<button class="btn ghost" id="sim-portal">Simulate: ${R.driver} casts the portal</button>`}`;
+    }
+    if(R.step===4)return `${steps(4)}<div class="portal" aria-hidden="true"></div>
+      <div class="card" style="text-align:center"><b class="c-MAGE">Portal: ${d}</b><span class="note">opened by ${R.driver} · 0:52 left</span></div><button class="btn" id="through">I'm through</button>`;
+    return `${steps(5)}<div class="ridehead">${emb(R.dest,"md")}<div class="rh-t"><b>Welcome to ${d}</b><small>Rate <span class="c-${R.driverCls}">${R.driver}</span></small></div></div>
+      <div class="stars">${[1,2,3,4,5].map(n=>`<button aria-label="${n} stars" data-star="${n}" class="${n<=S.stars?"on":""}">★</button>`).join("")}</div>
+      <button class="btn ghost" id="new-ride">New ride</button>`;
+  }
+
+  /* ---------- driver view ---------- */
+  function detection(c){
+    const svc=services(c);
+    let pills=readout(c);
+    if(c.cls==="MAGE")pills+=(c.runes?`<span class="pill ok">Rune of Portals ×${c.runes}</span>`:'<span class="pill bad">No Rune of Portals</span>')+(c.scroll?`<span class="pill ok">Liminal Passage ×${c.scroll}</span>`:'<span class="pill bad">No scroll</span>');
+    else pills+=`<span class="pill ok">Ritual · ${c.helpers}/2 helpers</span>`+(c.shards?`<span class="pill ok">Soul Shard ×${c.shards}</span>`:'<span class="pill bad">No Soul Shard</span>');
+    pills+=`<span class="pill gold">${c.rel}% · ${c.rides} rides</span>${trusted(c)?'<span class="pill gold">Trusted</span>':""}${S.penalty[c.key]?'<span class="pill bad">Rank −10 for 30 min</span>':""}`;
+    let reach;
+    if(c.cls==="MAGE"){
+      const known=portals(c);
+      reach=citiesOf(c.fac).map(x=>{const k=known.includes(x.id);
+        return `<span class="spell ${k?"":"off"}" title="${k?`Portal: ${x.name} known`:c.lvl>=x.lvl?`Portal: ${x.name} not learned yet`:`Portal: ${x.name} needs level ${x.lvl}`}">${emb(x.id,"xs")} ${x.name}${k?"":c.lvl>=x.lvl?" <small>not learned</small>":` <small>lvl ${x.lvl}</small>`}</span>`;}).join("");
+    } else reach=(sumDest(c).length?`${emb(c.city,"xs")} ${placeOf(c)}`:S.sumAny[c.key]?`${emb("ANY","xs")} ${placeOf(c)}`:'<span class="no">not in a city</span>')+`<small class="note">${S.sumAny[c.key]?"anywhere: on":"cities only"}</small>`;
+    const tags=possible(c).map(sv=>svc.includes(sv)&&!(sv==="SUM"&&!sumDest(c).length&&!S.sumAny[c.key])?`<span class="tag on">${SICON[sv]} ${SVCS[sv]}</span>`:`<span class="tag off">${SICON[sv]} ${SVCS[sv]} paused</span>`).join("");
+    return `<div class="card"><div class="label">Read by the addon</div><div class="whoami">${pills}</div>
+      <div class="kv"><span>${c.cls==="MAGE"?"Portal spells":"Summons to"}</span><span class="reach">${reach}</span></div>
+      <div class="kv"><span>Offering now</span><span class="tags">${tags}</span></div>
+      ${pauses(c).map(t=>`<div class="note no">${t}</div>`).join("")}</div>`;
+  }
+  function vReqs(){
+    const c=me(),reqs=openRequests(),busy=S.R&&S.R.step<5&&!S.R.cancel;
+    if(!S.duty[c.key])return `<div class="empty">You're off duty. Riders don't see you and requests don't reach you.</div>`;
+    const evs=reqs.map(r=>[r,evalReq(r)]).sort((a,b)=>(b[1].ok-a[1].ok)||((b[1].earn||0)-(a[1].earn||0)));
+    const auto=S.auto[c.key];
+    return `${gauge(null).html}${rankCard(c)}<div class="label">Open requests · highest pay first</div>
+      ${evs.length?evs.map(([r,e])=>`<div class="req ${r.live?"fresh":""} ${e.ok?"":"dim"}">
+        <div class="kv"><span style="color:var(--text)"><b>${r.name}</b>${r.live?' <span class="badge">new</span>':""} · ${standing(r)}</span><span>${r.kind==="HAIL"?`hail · max ${money(r.price)}`:`price ${money(r.price)}`}</span></div>
+        <div class="kv"><span>${r.place}${r.resting?' <span class="yes">resting</span>':""}</span><span>→ ${emb(r.dest,"xs")} ${CITY[r.dest].name}</span></div>
+        <div class="kv"><span>${e.ok?`${SVCS[e.sv]} · you earn ${gs(e.earn)}${e.below?` <span class="no">(below your ${gs(e.ask)})</span>`:""}`:`<span class="no">${e.why}</span>`}</span><span class="note">${r.exp}s</span></div>
+        <div class="timer"><i style="width:${Math.round(r.exp/120*100)}%"></i></div>
+        ${e.ok&&!e.below&&auto&&!r.live?`<div class="note">Matches your price. With auto-take on, the network would hand you this one as soon as you're free.</div>`:""}
+        <div class="btnrow"><button class="btn small" data-take="${r.id}" ${e.ok&&!(busy&&!r.live)?"":"disabled"}>Take for ${e.ok?gs(e.earn):"—"}</button></div>
+      </div>`).join(""):`<div class="empty"><span class="dot pulse"></span>No open requests.</div>`}
+      ${busy&&evs.some(([r])=>!r.live)?`<p class="note">This mock runs one ride at a time. Reset to take another request.</p>`:""}`;
+  }
+  function rankCard(c){
+    const meO={wait:c.wait,rides:c.rides,rel:c.rel,pen:!!S.penalty[c.key]},mine=rankOf(meO);
+    const others=[...new Map(offers().map(o=>[o.who,o])).values()];
+    const pos=1+others.filter(o=>o.rank>mine).length;
+    return `<div class="card"><div class="kv"><span>Your place in the taxi rank</span><span class="goldt">#${pos} of ${others.length+1}</span></div>
+      <div class="kv"><span>Rank points</span><span>${c.wait} min waiting${trusted(meO)?" +3 Trusted":""}${meO.pen?" −10 cancel":""} = ${mine}</span></div>
+      <div class="note">When several taxis can take the same ride, the one waiting longest gets it. Finishing a ride puts you at the back.</div></div>`;
+  }
+  function vPrices(){
+    const c=me(),reqs=openRequests();
+    const blocks=possible(c).map(sv=>{
+      const ask=S.asks[c.key][sv];
+      const rel=reqs.filter(r=>r.svcs.includes(sv));
+      const hit=rel.filter(r=>{const e=evalReq(r);return e.ok&&e.sv===sv&&!e.below;}).length;
+      const others=offers().filter(o=>o.svc===sv).map(o=>o.price).sort((a,b)=>a-b);
+      return `${stepper("ask-"+sv,ask,SVC[sv],services(c).includes(sv)?"active":"paused right now")}
+        <div class="note">${others.length?`Other taxis ask ${gs(others[0])} – ${gs(others[others.length-1])}. `:"No other taxi offers this right now. "}At your price you match ${hit} of ${rel.length} open request${rel.length===1?"":"s"} for it.</div>`;
+    }).join("");
+    return `<div class="label">Your prices</div>${blocks}
+      <div class="list">
+        <label class="row"><input type="checkbox" id="auto" ${S.auto[c.key]?"checked":""}><span class="grow">Auto-take<small>any posted price at or above yours is yours at once</small></span></label>
+        <label class="row"><input type="checkbox" id="skip-owing" ${S.skipOwing[c.key]?"checked":""}><span class="grow">Skip riders who owe gold<small>riders with an unpaid cancellation fee</small></span></label>
+        ${c.cls==="WARLOCK"?`<label class="row"><input type="checkbox" id="sum-any" ${S.sumAny[c.key]?"checked":""}><span class="grow">Summon pickup: anywhere<small>riders see where you stand (${placeOf(c)}) and can book a summon to it</small></span></label>`:""}
+      </div>
+      <p class="note">Prices go out in your next heartbeat. When taxis are scarce you can ask more and still get picked; when there are many, the cheapest gets the work.</p>`;
+  }
+  function vEarn(){
+    const max=Math.max(...WEEK.map(w=>w[1])),fmt=c=>(c/100)+"g";
+    return `<div class="kpis">
+        <div class="kpi"><span class="label">Today</span>${money(1150)}<small>5 rides</small></div>
+        <div class="kpi"><span class="label">7 days</span>${money(WEEK.reduce((a,w)=>a+w[1],0))}<small>${WEEK.reduce((a,w)=>a+w[2],0)} rides</small></div>
+        <div class="kpi"><span class="label">Rating</span><span class="money goldt">★ ${me().rating}</span><small>${me().rel}% completed</small></div>
+      </div>
+      <div class="label">Earnings, last 7 days</div>
+      <div class="bars">${WEEK.map((w,i)=>`<div class="bar ${i===6?"today":""}"><span class="bv">${fmt(w[1])}</span><div class="track"><i style="height:${Math.round(w[1]/max*100)}%"></i></div><span class="bd">${w[0]}</span></div>`).join("")}</div>
+      <div class="label">Recent rides</div>
+      <div class="list">${RIDES[me().fac].map(r=>`<div class="row static"><span class="money" style="color:var(--muted)">${r[0]}</span><span class="grow">${r[1]}<small>${r[2]} · ${SVCS[r[3]]}</small></span><span style="text-align:right">${money(r[4])}<small class="goldt">${"★".repeat(r[5])}</small></span></div>`).join("")}</div>`;
+  }
+  function vDriveActive(){
+    const R=S.R,c=me(),d=dName(R);
+    if(R.cancel){
+      return `<div class="label">Ride · ${R.rider} → ${d}</div>
+        <div class="empty"><h3>${R.rider} cancelled</h3><div>after you ${R.svc==="SUM"?"started the ritual":"used the scroll"}.</div></div>
+        <div class="card"><div class="kv"><span>Cancellation fee</span>${money(R.cancel.fee)}</div><div class="kv"><span>Status</span><span>${R.cancel.paid?'<span class="yes">received ✓ (read from the trade)</span>':'<span class="no">unpaid · recorded on the network</span>'}</span></div>
+        <div class="kv"><span>Your reliability</span><span class="yes">not affected</span></div></div>
+        <p class="note">Until the fee is paid, ${R.rider} can't book Come-to-you or summons, and other taxis see the debt on their requests.</p>
+        <button class="btn ghost" id="new-ride">Back to requests</button>`;
+    }
+    const items=R.svc==="COME"?["Request taken","Party formed automatically",`Use the scroll on ${R.rider}`,`Trade: expect ${gs(R.price)}`,`Cast Portal: ${d}`]
+      :R.svc==="SUM"?["Request taken","Party formed automatically",`Ritual of Summoning on ${R.rider}`,`Trade: expect ${gs(R.price)}`]
+      :["Request taken","Party formed automatically",`Wait for ${R.rider}`,`Trade: expect ${gs(R.price)}`,`Cast Portal: ${d}`];
+    const at=R.step===2?2:R.step===3?(R.paid?4:3):R.step===4?5:items.length;
+    const list=`<ul class="check">${items.map((t,i)=>`<li class="${i<at?"done":i===at?"now":""}">${t}</li>`).join("")}</ul>`;
+    const dcancel=`<button class="btn ghost small" id="d-cancel" style="align-self:flex-start">Cancel ride (costs you reliability)</button>`;
+    let act="";
+    if(R.step===2){
+      if(R.svc==="COME"){
+        const rest=riderResting(R);
+        act=R.casting?castBar(R,"You"):`<div class="card"><div class="kv"><span>You</span><span class="yes">resting ✓ · ${c.scroll} scroll${c.scroll===1?"":"s"}</span></div>
+          <div class="kv"><span>${R.rider}</span><span>in party · ${rest?'<span class="yes">resting ✓</span>':'<span class="no">left the inn</span>'}</span></div></div>
+          <button class="btn" id="use-scroll" ${rest?"":"disabled"}>Use Scroll of Liminal Passage on ${R.rider}</button>
+          <p class="note">${rest?"One secure button, also on a keybind: the addon sets it up, your click uses the item.":`The scroll would fail, so the button is off. Wait, or cancel: cancelling because the rider left the inn doesn't cost you reliability.`}</p>${rest?dcancel:`<button class="btn ghost small" id="d-cancel-free" style="align-self:flex-start">Cancel ride (no penalty)</button>`}`;
+      } else if(R.svc==="SUM"){
+        act=R.casting?castBar(R,"You"):R.summonReady?`<p class="note">Summon offered. Waiting for ${R.rider} to accept.</p><button class="btn ghost" id="accept-sum">Simulate: ${R.rider} accepts</button>`
+          :`<button class="btn" id="cast-summon">Cast Ritual of Summoning on ${R.rider}</button><p class="note">Your 2 helpers click the portal. Payment comes after arrival.</p>${dcancel}`;
+      } else act=`<p class="note">${R.rider} is on the way, the addon shows where they are.</p><button class="btn ghost" id="arrive">Simulate: ${R.rider} has arrived</button>${dcancel}`;
+    }
+    if(R.step===3){
+      act=`<div class="tradewin"><div class="tw-h">Trade · ${R.rider} (opened by Portaxi)</div><div class="tw-cols">
+        <div><small>${R.rider} gives</small>${money(R.paid?R.price:0)}${R.paid?'<span class="yes">matches ✓</span>':'<span class="note">waiting</span>'}</div>
+        <div><small>Expected</small>${money(R.price)}</div></div></div>`;
+      if(!R.paid)act+=`<button class="btn ghost" id="r-pay">Simulate: ${R.rider} clicks Trade</button><p class="note">If the amount is wrong, the addon says so before you accept.</p>`;
+      else if(R.svc!=="SUM")act+=R.casting?castBar(R,"You"):`<div class="note">Rune of Portals: ${c.runes} in bags</div><button class="btn" id="cast-portal" ${c.runes?"":"disabled"}>Cast Portal: ${d}</button><p class="note">Unlocked because the gold arrived. Same secure button, your click casts it.</p>`;
+    }
+    if(R.step===4)act=`<div class="portal" aria-hidden="true"></div><p class="note">Portal open, 0:52 left. Waiting for ${R.rider} to step in.</p><button class="btn ghost" id="through">Simulate: ${R.rider} steps through</button>`;
+    if(R.step===5)act=`<div class="empty"><span class="yes">Ride complete</span><span class="note">+${gs(R.price)} to today's earnings</span></div><button class="btn ghost" id="new-ride">Back to requests</button>`;
+    return `<div class="ridehead">${emb(R.dest,"md")}<div class="rh-t"><b>${R.rider} → ${d}</b><small>${SICON[R.svc]} ${SVC[R.svc]}</small></div>${money(R.price)}</div>${list}${act}`;
+  }
+  function vDrive(){
+    const c=me();
+    if(S.R&&S.R.driverKey===c.key&&S.R.step>=2)return vDriveActive();
+    const n=S.duty[c.key]?openRequests().filter(r=>evalReq(r).ok).length:0;
+    return `${S.dnotice?`<div class="confirm"><span>${S.dnotice}</span></div>`:""}
+      <div class="status"><span class="dot ${S.duty[c.key]?"":"off"}"></span><span style="flex:1;min-width:0">${S.duty[c.key]?`On duty in the ${FAC[c.fac].name} network`:"Off duty"}</span>
+        <button class="btn ghost small" id="duty">${S.duty[c.key]?"Go off duty":"Go on duty"}</button></div>
+      ${detection(c)}
+      <div class="seg" role="group" aria-label="Driver sections">
+        <button id="dt-req" data-dt="req" aria-pressed="${S.dtab==="req"}">Requests${n?` (${n})`:""}</button>
+        <button id="dt-price" data-dt="price" aria-pressed="${S.dtab==="price"}">My prices</button>
+        <button id="dt-earn" data-dt="earn" aria-pressed="${S.dtab==="earn"}">Earnings</button>
+      </div>
+      ${S.dtab==="price"?vPrices():S.dtab==="earn"?vEarn():vReqs()}`;
+  }
+
+  /* ---------- explanation ---------- */
+  const NOW=[
+    ["Order","The addon has already read the character: faction, race, class, level, known portal spells, Ritual of Summoning, scrolls in the bags and whether it's resting. Riders see their own faction's cities; taxis on the same faction's network send heartbeats with their offers and prices."],
+    ["Waiting for a taxi","The request is on every taxi's board in the same faction. A hail goes to the fastest taxi under the maximum; when two are within 15 seconds, the one that has waited longest for work wins. A posted price is paid exactly; taxis see the highest prices first, and among taxis that accept it the longest-waiting one gets it. Cancelling here is free."],
+    ["On the way","The taxi's addon invites the rider and the rider's addon accepts, so the party forms on its own. Both sides see the scroll, ritual or portal being cast live. Cancelling stays free until the taxi starts the scroll or ritual; after that the rider owes half the price."],
+    ["Payment","Once the two are together, the addon opens the trade and types the agreed amount in for the rider. The rider clicks Trade. The taxi's addon reads what arrived and only then unlocks the portal button, so nobody gets a portal without paying."],
+    ["Portal","The mage clicks the unlocked button, both sides see the cast, and the portal stays for 60 seconds. If the rider misses it, the addon offers a free second one."],
+    ["Rating","Both sides rate each other. A rating only counts where the addon saw a real trade. Completed rides raise the taxi's reliability; at 25 rides and 97% it becomes Trusted and gets 3 extra points in the taxi rank."]
+  ];
+
+  function raidWarning(){
+    const c=me(),R=S.R;
+    if(S.tab!=="drive"||!S.open||!canDrive(c)||!S.duty[c.key]||!R||R.fac!==c.fac||R.step!==1||R.cancel||R.riderKey===S.me)return;
+    const key=`${S.me}|${R.kind}|${R.price}|${R.dest}`;
+    if(S.rwKey===key)return;
+    const d=debtOf(R.riderKey);
+    const e=evalReq({svcs:R.svcs,dest:R.dest,resting:R.riderResting,kind:R.kind,price:R.price,owes:d?d.amount:0});
+    if(!e.ok)return;
+    S.rwKey=key;
+    const rw=$("rw");
+    rw.textContent=`Portaxi: new request · ${R.rider} → ${dName(R)} · ${R.kind==="HAIL"?"max ":""}${gs(R.price)}`;
+    rw.hidden=false;rw.classList.remove("go");void rw.offsetWidth;rw.classList.add("go");
+    clearTimeout(raidWarning.t);raidWarning.t=setTimeout(()=>{rw.hidden=true;},3500);
+  }
+
+  function render(){
+    const c=me();
+    if(S.tab==="drive"&&!canDrive(c))S.tab="ride";
+    if(S.dest!=="ANY"&&CITY[S.dest].fac!==c.fac)S.dest=citiesOf(c.fac)[0].id;
+    $("fac-seg").innerHTML=["A","H"].map(f=>`<button id="sf-${f}" data-sf="${f}" aria-pressed="${S.simFac===f}">${FAC[f].name}</button>`).join("");
+    $("who-grid").innerHTML=Object.values(CHARS).filter(x=>x.fac===S.simFac).map(x=>`<button id="as-${x.key}" data-as="${x.key}" aria-pressed="${S.me===x.key}"><span class="c-${x.cls}">${x.name}</span><small>${x.race} ${CLS[x.cls]} ${x.lvl}</small></button>`).join("");
+    $("gold-seg").innerHTML=[50,300,2500].map(v=>`<button id="gold-${v}" data-gold="${v}" aria-pressed="${c.gold===v}">${gs(v)}</button>`).join("");
+    const reag=c.cls==="MAGE"?"Rune of Portals":c.cls==="WARLOCK"?"Soul Shard":"Reagents (taxis only)";
+    $("reag-txt").textContent=reag+" in bags";
+    $("sim-reag").checked=c.cls==="MAGE"?c.runes>0:c.cls==="WARLOCK"?c.shards>0:false;$("sim-reag").disabled=!(c.cls==="MAGE"||c.cls==="WARLOCK");
+    $("lbl-reag").classList.toggle("dis",$("sim-reag").disabled);
+    $("sim-rest").checked=c.resting;
+    $("sim-scroll").checked=c.scroll>0;$("sim-scroll").disabled=c.cls!=="MAGE";
+    $("lbl-scroll").classList.toggle("dis",c.cls!=="MAGE");
+    ["few","bal","many"].forEach(k=>$("mk-"+k).setAttribute("aria-pressed",S.market===k));
+    $("btabs").innerHTML=`<button class="btab" role="tab" id="tab-ride" data-tab="ride" aria-selected="${S.tab==="ride"}">Ride</button>`+
+      (canDrive(c)?`<button class="btab" role="tab" id="tab-drive" data-tab="drive" aria-selected="${S.tab==="drive"}">Drive</button>`:"");
+    $("frame-wrap").hidden=!S.open;$("closed").hidden=S.open;
+    $("frame-wrap").className=`frame-wrap ${FAC[c.fac].cls}`;
+    $("portrait").innerHTML=ICONS[c.cls];
+    $("ft-sub").textContent=`${FAC[c.fac].name} · ${canDrive(c)&&S.tab==="drive"?"Taxi":"Rider"} · ${CLS[c.cls]} ${c.lvl}`;
+    const g=gauge(null);
+    $("ft-online").textContent=`${g.drivers} taxis online`;
+    if(S.tab==="drive")view.innerHTML=vDrive();
+    else view.innerHTML=(S.R&&S.R.riderKey===S.me)?vRideActive():vRideForm();
+    $("mm-zone").textContent=c.resting?c.zone:c.away;
+    $("mm-tip").innerHTML=`<b>Portaxi</b><span>${FAC[c.fac].name}: ${g.drivers} taxis online · ${g.riders} riders waiting</span>
+      <span>${canDrive(c)?`You: ${c.race} ${CLS[c.cls]} ${c.lvl}, ${S.duty[c.key]?"on duty":"off duty"}`:`You: rider (${c.race} ${CLS[c.cls]} ${c.lvl})`}</span>
+      <span class="hint">Click: ${S.open?"close":"open"} the window</span>`;
+    const st=S.R?Math.min(5,S.R.step):0;
+    $("now-step").textContent=S.R&&S.R.cancel?"Cancelled":`Step ${st+1} of 6`;
+    $("now-title").textContent=S.R&&S.R.cancel?"Late cancel":NOW[st][0];
+    $("now-text").textContent=S.R&&S.R.cancel?`${S.R.rider} cancelled after ${S.R.driver} had already ${S.R.svc==="SUM"?"started the ritual":"used a scroll"}. The fee is half the ride price. It's recorded on the network until ${S.R.driver}'s addon sees it paid in a trade or by mail; meanwhile ${S.R.rider} can only book pickups, where the gold comes before the portal.`:NOW[st][1];
+    const log=$("log");
+    log.innerHTML=S.log.length?S.log.map(([k,m])=>`<div class="${k==="me"?"me":k==="dim"?"dim":""}">${esc(m)}</div>`).join("")
+      :`<div class="dim">  # ${FAC[c.fac].name} channel · taxi heartbeats, once a minute</div>`+offers().slice(0,4).map(o=>`<div>${esc(`< HELLO from=${o.who} fac=${c.fac} cls=${o.cls} lvl=${o.lvl} svc=${o.svc} ask=${o.price} dest=${o.dests.join(",")} reagents=ok rel=${o.rel}`)}</div>`).join("")+`<div class="dim">  # no requests yet</div>`;
+    raidWarning();
+  }
+
+  /* ---------- events ---------- */
+  function adjust(id,dv){
+    const c=me();
+    if(id==="max")S.max=Math.max(10,Math.min(1500,S.max+dv));
+    else if(id==="bid")S.bid=Math.max(10,Math.min(1500,S.bid+dv));
+    else if(id.startsWith("ask-")){
+      const sv=id.slice(4);S.asks[c.key][sv]=Math.max(10,Math.min(1500,S.asks[c.key][sv]+dv));
+      addLog("me",`> ASK   from=${c.name} svc=${sv} price=${S.asks[c.key][sv]}`);
+      const R=S.R;
+      if(R&&R.fac===c.fac&&R.step===1&&!R.cancel&&R.kind==="BID"&&R.riderKey!==S.me&&S.auto[c.key]&&S.duty[c.key]){
+        const d=debtOf(R.riderKey);
+        const e=evalReq({svcs:R.svcs,dest:R.dest,resting:R.riderResting,kind:"BID",price:R.price,owes:d?d.amount:0});
+        if(e.ok&&!e.below){match({who:c.name,key:c.key,cls:c.cls,lvl:c.lvl,place:placeOf(c),rel:c.rel,rides:c.rides,pen:!!S.penalty[c.key],svc:e.sv},R.price,"auto-take");S.dnotice=null;S.tab="drive";}
+      }
+    }
+  }
+  function simTake(){
+    const R=S.R,fit=fitting(R.dest,R.svcs);
+    if(R.kind==="HAIL"){
+      const ans=hailOrder(fit.filter(o=>o.price<=R.price));
+      if(ans.length){
+        const min=Math.min(...ans.map(o=>o.eta)),tie=ans.filter(o=>o.eta<=min+TIE);
+        addLog("dim",`  ${ans.length} taxis under max · fastest ${fmtEta(min)}${tie.length>1?` · tie within ${TIE}s: ${tie.map(o=>o.who+" "+o.wait+"m").join(", ")} → longest waiting`:""}`);
+        match(ans[0],ans[0].price);}
+    } else {
+      const o=fit.slice().sort(byRank)[0];
+      if(o)match(o,R.price,"next in the taxi rank took the posted price");
+    }
+  }
+  function selectChar(key){
+    S.me=key;const R=S.R;
+    if(R&&R.driverKey===S.me&&R.step>=2)S.tab="drive";
+    else if(R&&R.riderKey===S.me)S.tab="ride";
+    else if(canDrive(me())&&R&&R.fac===me().fac&&R.step===1)S.tab="drive";
+  }
+
+  document.querySelector(".sim").addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.sf){S.simFac=b.dataset.sf;if(me().fac!==S.simFac)selectChar(Object.values(CHARS).find(x=>x.fac===S.simFac).key);render();}
+    if(b.dataset.as){selectChar(b.dataset.as);render();}
+    if(b.dataset.mk){S.market=b.dataset.mk;S.taken=new Set();render();}
+    if(b.dataset.gold){me().gold=+b.dataset.gold;render();}
+  });
+  $("sim-reag").addEventListener("change",e=>{const c=me(),on=e.target.checked;
+    if(c.cls==="MAGE")c.runes=on?(INIT[c.key].runes||8):0;if(c.cls==="WARLOCK")c.shards=on?(INIT[c.key].shards||5):0;render();});
+  $("sim-rest").addEventListener("change",e=>{me().resting=e.target.checked;render();});
+  $("sim-scroll").addEventListener("change",e=>{me().scroll=e.target.checked?Math.max(1,INIT[S.me].scroll||3):0;render();});
+  $("btabs").addEventListener("click",e=>{const t=e.target.closest(".btab");if(t){S.tab=t.dataset.tab;render();}});
+  $("close").addEventListener("click",()=>{S.open=false;render();});
+  $("mm-btn").addEventListener("click",()=>{S.open=!S.open;render();});
+  view.addEventListener("change",e=>{
+    const t=e.target;
+    if(t.id==="walk")S.walk=t.checked;
+    if(t.id==="auto")S.auto[S.me]=t.checked;
+    if(t.id==="skip-owing")S.skipOwing[S.me]=t.checked;
+    if(t.id==="sum-any")S.sumAny[S.me]=t.checked;
+    render();
+  });
+  view.addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b||b.disabled)return;
+    const d=b.dataset,R=S.R;
+    if(d.dest){S.dest=d.dest;return render();}
+    if(d.how){S.how=d.how;return render();}
+    if(d.dt){S.dtab=d.dt;return render();}
+    if(d.adj){const i=d.adj.lastIndexOf(":");adjust(d.adj.slice(0,i),+d.adj.slice(i+1));return render();}
+    if(d.star){S.stars=+d.star;addLog("me",`> W ${R.driver}: RATE ${S.stars}`);return render();}
+    if(d.sbook!==undefined){
+      const c=me(),list=offers().filter(o=>o.svc==="SUM"&&o.any&&allowed(c,S.walk).includes("SUM")).sort((a,b)=>a.eta-b.eta),o=list[+d.sbook];
+      if(o){startRide("BOOK",o.price);S.R.destPlace=o.spot;match(o,o.price);}return render();
+    }
+    if(d.book!==undefined){
+      const fit=fitting(S.dest,allowed(me(),S.walk)).sort((a,b)=>a.price-b.price),o=fit[+d.book];
+      if(o){startRide("BOOK",o.price);match(o,o.price);}return render();
+    }
+    if(d.take){
+      const c=me(),r=openRequests().find(x=>x.id===d.take);if(!r)return;
+      const ev=evalReq(r);if(!ev.ok)return;
+      if(!r.live){S.taken.add(r.id);S.R={fac:c.fac,rider:r.name,riderKey:null,riderPlace:r.place,riderResting:r.resting,dest:r.dest,kind:r.kind,price:r.price,svcs:r.svcs,step:1};
+        addLog("in",`< ${r.kind.padEnd(5)} id=${r.id} from=${r.name} dest=${r.dest} svc=${r.svcs.join(",")} ${r.kind==="HAIL"?"max":"price"}=${r.price}`);}
+      match({who:c.name,key:c.key,cls:c.cls,lvl:c.lvl,place:placeOf(c),rel:c.rel,rides:c.rides,pen:!!S.penalty[c.key],svc:ev.sv},ev.earn);
+      addLog("dim",`  ${c.name} took it by hand`);S.dnotice=null;
+      return render();
+    }
+    switch(b.id){
+      case "go-hail": startRide("HAIL",S.max);break;
+      case "go-bid": {
+        startRide("BID",S.bid);
+        const o=fitting(S.dest,S.R.svcs).filter(o=>o.price<=S.bid&&o.auto).sort(byRank)[0];
+        if(o)match(o,S.bid,"auto-take · next in the taxi rank");
+        break;}
+      case "sim-take": simTake();break;
+      case "raise-top": if(R&&+d.to<=me().gold){R.price=+d.to;addLog("me",`> BID   id=7f3a price=${R.price} (raised to go first)`);}break;
+      case "raise": R.price+=R.kind==="HAIL"?50:20;addLog("me",`> ${R.kind.padEnd(5)} id=7f3a ${R.kind==="HAIL"?"max":"price"}=${R.price} (raised)`);break;
+      case "cancel-free": addLog("me","> CANCEL id=7f3a (free, nobody matched yet)");S.R=null;break;
+      case "ask-cancel": R.confirmCancel=true;break;
+      case "keep-ride": R.confirmCancel=false;break;
+      case "confirm-cancel": riderCancel();break;
+      case "pay-fee": payFee();break;
+      case "close-ride": S.R=null;S.stars=0;break;
+      case "sim-scroll": case "use-scroll": if(R&&R.step===2&&!R.casting&&riderResting(R))cast("scroll");break;
+      case "sim-summon": case "cast-summon": if(R&&R.step===2&&!R.casting)cast("summon");break;
+      case "accept-sum": if(R&&R.summonReady)advance(3);return;
+      case "arrive": if(R&&R.step===2)advance(3);return;
+      case "r-pay": if(R&&R.step===3&&!R.paid&&!(R.riderKey&&CHARS[R.riderKey].gold<R.price))pay();return;
+      case "sim-portal": case "cast-portal": if(R&&R.step===3&&R.paid&&!R.casting&&!(R.driverKey&&!CHARS[R.driverKey].runes))cast("portal");break;
+      case "through": if(R&&R.step===4)advance(5);return;
+      case "d-cancel": case "d-cancel-free":
+        if(b.id==="d-cancel-free"){addLog("me",`> CANCEL id=7f3a by=taxi · rider left the inn · no penalty`);
+          if(R.riderKey)Object.assign(R,{step:1,driver:null,driverKey:null,svc:null,notice:`${me().name} cancelled because you left the inn. Your request is back on the board.`});else S.R=null;}
+        else driverCancel();
+        break;
+      case "new-ride": S.R=null;S.stars=0;break;
+      case "duty": S.duty[S.me]=!S.duty[S.me];addLog("me",`> HELLO from=${me().name} ${S.duty[S.me]?"on duty":"off duty"}`);break;
+    }
+    render();
+  });
+  $("reset").addEventListener("click",()=>{
+    S.R=null;S.log=[];S.taken=new Set();S.rwKey=null;S.stars=0;S.debt=null;S.penalty={};S.dnotice=null;
+    Object.keys(INIT).forEach(k=>{const i=INIT[k],c=CHARS[k];c.scroll=i.scroll;c.gold=i.gold;if(i.rel!=null)c.rel=i.rel;if(i.runes!=null)c.runes=i.runes;if(i.shards!=null)c.shards=i.shards;if(i.wait!=null)c.wait=i.wait;});
+    render();
+  });
+  render();
+})();
+</script>

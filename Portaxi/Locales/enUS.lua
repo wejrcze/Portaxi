@@ -1,0 +1,225 @@
+-- UI strings, English (card J, wave 3). The key is the English text itself: code writes ns.L["Hail a taxi"].
+-- Every key the code uses is listed here, mapped to the same text; this is the list for future translations.
+-- tests/locales_test.lua fails on a key the code uses that is missing here, and on an entry no code uses.
+-- A key that is still missing returns itself, so a forgotten entry never breaks the UI.
+-- Keys reached indirectly (L[city.name], L[ERRORS[code]]) are listed under "Indirect keys".
+
+local _, ns = ...
+
+local L = setmetatable({}, {
+  __index = function(_, key)
+    return key
+  end,
+})
+ns.L = L
+
+-- Main window, tabs, minimap button ------------------------------------------------------------
+L["Portaxi"] = "Portaxi"
+L["Ride"] = "Ride"
+L["Drive"] = "Drive"
+L["Rider"] = "Rider"
+L["Taxi"] = "Taxi"
+L["Waiting for character data"] = "Waiting for character data"
+L["1 taxi online"] = "1 taxi online"
+L["%d taxis online"] = "%d taxis online"
+L["You: rider (%s)"] = "You: rider (%s)"
+L["You: taxi, %s (%s)"] = "You: taxi, %s (%s)"
+L["on duty"] = "on duty"
+L["off duty"] = "off duty"
+L["Click: open or close the window. Drag: move this button."] =
+  "Click: open or close the window. Drag: move this button."
+L["unknown"] = "unknown"
+
+-- Ride tab --------------------------------------------------------------------------------------
+L["Waiting for the addon to read your character."] = "Waiting for the addon to read your character."
+L["Resting"] = "Resting"
+L["Not resting"] = "Not resting"
+L["%s in bags"] = "%s in bags"
+L["Choose your destination"] = "Choose your destination"
+L["Destinations appear once the addon knows your faction."] =
+  "Destinations appear once the addon knows your faction."
+L["no taxis"] = "no taxis"
+L["1 taxi"] = "1 taxi"
+L["%d taxis"] = "%d taxis"
+L["from %s"] = "from %s"
+L["How to ride"] = "How to ride"
+L["Hail"] = "Hail"
+L["Browse"] = "Browse"
+L["Your maximum"] = "Your maximum"
+L["You pay the taxi's own price."] = "You pay the taxi's own price."
+L["You pay the taxi's own price. You carry %s."] = "You pay the taxi's own price. You carry %s."
+L["You carry only %s. Portaxi won't send an offer for more gold than you have."] =
+  "You carry only %s. Portaxi won't send an offer for more gold than you have."
+L["Hail a taxi"] = "Hail a taxi"
+L["Hail a taxi to %s"] = "Hail a taxi to %s"
+L["Network not ready yet."] = "Network not ready yet."
+L["Waiting for character data."] = "Waiting for character data."
+L["Choose a destination."] = "Choose a destination."
+L["Lower your maximum to what you carry."] = "Lower your maximum to what you carry."
+L["Your request is open."] = "Your request is open."
+L["You are on a ride."] = "You are on a ride."
+L["Book"] = "Book"
+L["Too dear"] = "Too dear"
+L["No taxi offers %s right now."] = "No taxi offers %s right now."
+L["Cancel"] = "Cancel"
+L["Waiting for %s to accept..."] = "Waiting for %s to accept..."
+L["Searching for a taxi to %s..."] = "Searching for a taxi to %s..."
+L["%d answered"] = "%d answered"
+L["Matched with %s, here in about %s."] = "Matched with %s, here in about %s."
+L["%d s"] = "%d s"
+L["%d min"] = "%d min"
+L["No taxi answered. Try a higher maximum or Browse."] = "No taxi answered. Try a higher maximum or Browse."
+L["Request cancelled."] = "Request cancelled."
+L["The network is not ready. Try again in a moment."] = "The network is not ready. Try again in a moment."
+L["Your character can't open portals, so you ride."] = "Your character can't open portals, so you ride."
+
+-- Drive tab -------------------------------------------------------------------------------------
+L["Go on duty"] = "Go on duty"
+L["Go off duty"] = "Go off duty"
+L["On duty in the %s network"] = "On duty in the %s network"
+L["Off duty"] = "Off duty"
+L["Read by the addon"] = "Read by the addon"
+L["Portal: %s"] = "Portal: %s"
+L["known"] = "known"
+L["not learned"] = "not learned"
+L["Rune of Portals"] = "Rune of Portals"
+L["Scroll of Liminal Passage"] = "Scroll of Liminal Passage"
+L["Offering now"] = "Offering now"
+L["none"] = "none"
+L["nothing"] = "nothing"
+L["yes"] = "yes"
+L["no"] = "no"
+L["Your prices"] = "Your prices"
+L["active"] = "active"
+L["paused right now"] = "paused right now"
+L["Prices go out with your next heartbeat on the network."] =
+  "Prices go out with your next heartbeat on the network."
+L["Open requests"] = "Open requests"
+L["No requests yet"] = "No requests yet"
+L["%s to %s"] = "%s to %s"
+L["(booked you)"] = "(booked you)"
+L["%d s ago"] = "%d s ago"
+L["Take"] = "Take"
+L["Sent"] = "Sent"
+L["%d more requests"] = "%d more requests"
+
+-- Duty box ----------------------------------------------------------------------------------------
+L["On duty"] = "On duty"
+L["On duty (locked)"] = "On duty (locked)"
+L["Off"] = "Off"
+L["On a ride"] = "On a ride"
+L["No open requests"] = "No open requests"
+L["1 open request"] = "1 open request"
+L["%d open requests"] = "%d open requests"
+L["Duty box hidden. /ptx box shows it again."] = "Duty box hidden. /ptx box shows it again."
+L["Duty box shown."] = "Duty box shown."
+L["Duty box locked."] = "Duty box locked."
+L["Duty box unlocked: drag it to move it."] = "Duty box unlocked: drag it to move it."
+L["The duty box shows while you are on duty as a taxi."] = "The duty box shows while you are on duty as a taxi."
+
+-- Alerts ------------------------------------------------------------------------------------------
+L["Portaxi: %s wants %s (%s, %s)"] = "Portaxi: %s wants %s (%s, %s)"
+L["Portaxi: %s booked you to %s (%s, %s)"] = "Portaxi: %s booked you to %s (%s, %s)"
+
+-- Ride panel and the secure button label (Core/Ride.lua) ---------------------------------------------
+L["Ride to %s"] = "Ride to %s"
+L["You drive"] = "You drive"
+L["You ride"] = "You ride"
+L["Service"] = "Service"
+L["Price"] = "Price"
+L["Come to you"] = "Come to you"
+L["Pickup"] = "Pickup"
+L["Teleport to the rider"] = "Teleport to the rider"
+L["The taxi teleports to you"] = "The taxi teleports to you"
+L["The rider walks to you"] = "The rider walks to you"
+L["Walk to the taxi"] = "Walk to the taxi"
+L["Ride cancelled"] = "Ride cancelled"
+L["Ride failed"] = "Ride failed"
+L["Late cancel."] = "Late cancel."
+L["Ready: %s. Click the Portaxi button"] = "Ready: %s. Click the Portaxi button"
+L["(key %s)"] = "(key %s)"
+L["The rider is not resting: the scroll is off. You can cancel for free."] =
+  "The rider is not resting: the scroll is off. You can cancel for free."
+L["You are not resting: the scroll cannot reach you. Go back to an inn or a city."] =
+  "You are not resting: the scroll cannot reach you. Go back to an inn or a city."
+L["You are not resting: the scroll needs both of you in an inn or a city."] =
+  "You are not resting: the scroll needs both of you in an inn or a city."
+L["Automatic invite is off: click Invite."] = "Automatic invite is off: click Invite."
+L["Automatic accept is off: click Accept."] = "Automatic accept is off: click Accept."
+L["The trade did not open: click Open trade."] = "The trade did not open: click Open trade."
+L["Put %s into the trade window yourself."] = "Put %s into the trade window yourself."
+L["The rider offers %s of %s. Do not accept yet."] = "The rider offers %s of %s. Do not accept yet."
+L["Confirm late cancel"] = "Confirm late cancel"
+L["Cancel (late)"] = "Cancel (late)"
+L["Cancel (free)"] = "Cancel (free)"
+L["Invite"] = "Invite"
+L["Accept"] = "Accept"
+L["Open trade"] = "Open trade"
+L["Teleport to %s"] = "Teleport to %s"
+
+-- Indirect keys -----------------------------------------------------------------------------------
+-- Cities (Const.CITY[key].name) and factions (UnitFactionGroup).
+L["Orgrimmar"] = "Orgrimmar"
+L["Undercity"] = "Undercity"
+L["Thunder Bluff"] = "Thunder Bluff"
+L["Stormwind"] = "Stormwind"
+L["Ironforge"] = "Ironforge"
+L["Darnassus"] = "Darnassus"
+L["Horde"] = "Horde"
+L["Alliance"] = "Alliance"
+
+-- Services (DriveTab, DutyBox, RideTab, Alerts).
+L["Come-to-you portal"] = "Come-to-you portal"
+L["Portal pickup"] = "Portal pickup"
+L["Come-to-you"] = "Come-to-you"
+L["Come"] = "Come"
+
+-- Pause reasons (Detect pauses): DriveTab in full, DutyBox short.
+L["Only mages can drive in this version."] = "Only mages can drive in this version."
+L["No portal spell learned yet."] = "No portal spell learned yet."
+L["No Rune of Portals in your bags: every portal is paused."] =
+  "No Rune of Portals in your bags: every portal is paused."
+L["Come-to-you paused: no Scroll of Liminal Passage."] = "Come-to-you paused: no Scroll of Liminal Passage."
+L["Come-to-you paused: you're not resting."] = "Come-to-you paused: you're not resting."
+L["Only mages can drive."] = "Only mages can drive."
+L["Paused: no portal learned."] = "Paused: no portal learned."
+L["Paused: no Rune of Portals."] = "Paused: no Rune of Portals."
+L["Come-to-you paused: no scroll."] = "Come-to-you paused: no scroll."
+L["Come-to-you paused: not resting."] = "Come-to-you paused: not resting."
+L["Paused."] = "Paused."
+
+-- Dispatch errors (RideTab.ERRORS, DriveTab Take errors).
+L["You don't carry enough gold for that."] = "You don't carry enough gold for that."
+L["Wait a few seconds before you hail again."] = "Wait a few seconds before you hail again."
+L["You already have an open request or a ride."] = "You already have an open request or a ride."
+L["Choose a destination of your faction."] = "Choose a destination of your faction."
+L["That taxi no longer offers this."] = "That taxi no longer offers this."
+L["Come-to-you needs you to be resting."] = "Come-to-you needs you to be resting."
+L["That price is out of range."] = "That price is out of range."
+L["You are already in that city."] = "You are already in that city."
+L["Leave your group first: the taxi has to invite you."] = "Leave your group first: the taxi has to invite you."
+L["Go on duty to take requests."] = "Go on duty to take requests."
+L["Waiting for the rider to confirm your last answer."] = "Waiting for the rider to confirm your last answer."
+L["That request is gone."] = "That request is gone."
+
+-- Ride steps, states and end reasons (RidePanel).
+L["Match"] = "Match"
+L["Group"] = "Group"
+L["Trade"] = "Trade"
+L["Portal"] = "Portal"
+L["Done"] = "Done"
+L["Forming the group"] = "Forming the group"
+L["In a group"] = "In a group"
+L["On the way"] = "On the way"
+L["Together"] = "Together"
+L["Trade the price"] = "Trade the price"
+L["Paid, waiting for the portal"] = "Paid, waiting for the portal"
+L["The portal is open"] = "The portal is open"
+L["Arrived. Have a good trip!"] = "Arrived. Have a good trip!"
+L["The group did not form in time."] = "The group did not form in time."
+L["%s went offline."] = "%s went offline."
+L["%s is no longer in the group."] = "%s is no longer in the group."
+L["The ride failed on %s's side."] = "The ride failed on %s's side."
+L["%s cancelled the ride."] = "%s cancelled the ride."
+L["Nobody paid in time."] = "Nobody paid in time."
+L["You cancelled the ride."] = "You cancelled the ride."

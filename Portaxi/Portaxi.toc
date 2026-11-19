@@ -1,0 +1,28 @@
+## Interface: 16001
+## Title: Portaxi
+## Notes: Portal taxi network for mages and warlocks.
+## Version: 0.1.0-dev
+## SavedVariables: PortaxiDB
+## SavedVariablesPerCharacter: PortaxiCharDB
+
+# Complete file list of the MVP (playbook D7): adding a file later needs a client restart.
+Core/Init.lua
+Core/Const.lua
+Locales/enUS.lua
+Core/Probe.lua
+Core/Protocol.lua
+Core/Market.lua
+Core/Detect.lua
+Core/Net.lua
+Core/Dispatch.lua
+Core/Ride.lua
+Core/Trade.lua
+Core/Secure.lua
+UI/Widgets.lua
+UI/MainFrame.lua
+UI/Minimap.lua
+UI/Alerts.lua
+UI/RideTab.lua
+UI/DriveTab.lua
+UI/RidePanel.lua
+UI/DutyBox.lua
