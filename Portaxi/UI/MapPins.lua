@@ -9,6 +9,12 @@
 --   child of WorldMapFrame, so nothing runs while the map is closed.
 --   MapPins.view(mapId) -> { { entry, x, y, r } } map positions (0..1) of the pins on that map, r = ring radius
 --   as a share of the map height ; MapPins.refresh() ; MapPins.attach() -> bool ; MapPins.pins
+--   MapPins.level, MapPins.levelSource: the frame level the pins got and where from ("manager" | "canvas").
+--
+-- Frame level: the map draws its layers (explored areas, POIs, the player arrow) on frame levels handed out by
+-- WorldMapFrame:GetPinFrameLevelsManager(). A pin a few levels above the canvas is hidden under the explored
+-- area tiles while the mouse still finds it (in game 2026-11-19: tooltip, no pin). Pins take the level of
+-- area POIs, above the map, below the player arrow; without the manager, far above the canvas.
 --
 -- Needs WorldMapFrame.ScrollContainer.Child (the map canvas) and C_Map.GetMapPosFromWorldPos; without them there
 -- are no pins and Browse still lists the taxis. Unverified on Forever (plan §5 F2, F4).
@@ -28,6 +34,8 @@ local REFRESH = 0.5
 local ICON = 18
 local RING_MIN = 14
 local SERVICE = "Pickup"
+local LEVEL_TYPE = "PIN_FRAME_LEVEL_AREA_POI"
+local LEVEL_FALLBACK = 1000 -- above the canvas when the map has no frame level manager
 
 -- Map positions ----------------------------------------------------------------------------------
 
@@ -166,6 +174,18 @@ local function hideFrom(i)
   end
 end
 
+local function pinLevel(child)
+  local wm = WorldMapFrame
+  local manager = type(wm.GetPinFrameLevelsManager) == "function" and call(wm.GetPinFrameLevelsManager, wm)
+  if type(manager) == "table" and type(manager.GetValidFrameLevel) == "function" then
+    local level = call(manager.GetValidFrameLevel, manager, LEVEL_TYPE)
+    if type(level) == "number" then
+      return level, "manager"
+    end
+  end
+  return (child:GetFrameLevel() or 0) + LEVEL_FALLBACK, "canvas"
+end
+
 function P.refresh()
   local child = canvas()
   if not (child and WorldMapFrame:IsShown()) then
@@ -176,7 +196,8 @@ function P.refresh()
   local list = P.view(mapId)
   local w, h = child:GetWidth() or 0, child:GetHeight() or 0
   local inv = 1 / canvasScale() -- the icon keeps its size when the map zooms; the ring is map area and zooms
-  local level = (child:GetFrameLevel() or 0) + 20
+  local level, source = pinLevel(child)
+  P.level, P.levelSource = level, source
   for i, v in ipairs(list) do
     local pin = P.pins[i] or newPin(child)
     P.pins[i] = pin

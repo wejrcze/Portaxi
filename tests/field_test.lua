@@ -287,6 +287,13 @@ T.test("/ptx mapself: the taxi sees its own pin and Browse row from its last SPO
   T.ok(P.attach())
   P.refresh()
   T.ok(P.pins[1] and P.pins[1]:IsShown(), "own pin drawn")
+  T.eq(P.levelSource, "canvas", "no frame level manager: far above the canvas")
+  T.ok(P.level >= 1000)
+  env.WorldMapFrame.GetPinFrameLevelsManager = function()
+    return { GetValidFrameLevel = function(_, kind) return kind == "PIN_FRAME_LEVEL_AREA_POI" and 734 or nil end }
+  end
+  P.refresh()
+  T.eq({ P.level, P.levelSource }, { 734, "manager" }, "the level of area POIs, above explored areas")
   P.pins[1]:Click()
   sim:advance(1)
   T.eq(taxi.ns.Dispatch.status().hail, nil, "no booking of oneself")
