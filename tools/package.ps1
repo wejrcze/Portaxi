@@ -1,5 +1,6 @@
 # Builds the release zip for CurseForge (or a GitHub release):
-#   dist\Portaxi-<version>.zip  with a single top-level "Portaxi\" folder inside.
+#   dist\ForeverPortaxi-<version>.zip  with a single top-level "Portaxi\" folder inside. The folder keeps
+#   the internal addon name; ForeverPortaxi is the public name (TOC "## Title:", CurseForge).
 # The version is read from "## Version:" in Portaxi\Portaxi.toc. Runs tools\check.ps1 first.
 param([switch]$SkipCheck)
 $ErrorActionPreference = "Stop"
@@ -17,7 +18,7 @@ $version = ($versionLine -replace '^## Version:\s*', '').Trim()
 
 $dist = Join-Path $root "dist"
 New-Item -ItemType Directory -Force $dist | Out-Null
-$zip = Join-Path $dist "Portaxi-$version.zip"
+$zip = Join-Path $dist "ForeverPortaxi-$version.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 
 # Zip entries must use "/" and live under "Portaxi/"; Compress-Archive on Windows PowerShell writes "\",

@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<style>
+:root{--w:1200px;--h:380px}
+body{display:flex;flex-direction:column;justify-content:center;gap:26px;padding:0 48px}
+.head{display:flex;align-items:baseline;gap:18px}
+h2{font:700 34px/1 var(--f-display);color:var(--gold);letter-spacing:.04em}
+.steps{display:flex;align-items:stretch;gap:14px}
+.step{flex:1;min-width:0;padding:22px 20px 20px;display:flex;flex-direction:column;gap:10px}
+.num{font:700 46px/1 var(--f-display);color:var(--gold-dim)}
+.step h3{font:700 22px/1.1 var(--f-display);color:var(--gold);letter-spacing:.03em}
+.step p{color:var(--text);font-size:16px;line-height:1.45}
+.step p em{font-style:normal;color:var(--gold);font-weight:600}
+.arrow{align-self:center;color:var(--trim);font:700 26px var(--f-display);flex:none}
+.step.portal{background:radial-gradient(circle at 85% 18%,rgba(63,199,235,.22) 0,transparent 55%),var(--panel)}
+.step.portal .num{color:var(--mage)}
+</style></head>
+<body>
+  <div class="head"><h2>How a ride works</h2><span class="eyebrow">the ride panel walks you through each step</span></div>
+  <div class="steps">
+    <div class="step frame"><span class="num">I</span><h3>Hail</h3><p>Pick a city and your top price. The fastest taxi on duty takes the fare.</p></div>
+    <span class="arrow">&rsaquo;</span>
+    <div class="step frame"><span class="num">II</span><h3>Group up</h3><p>The mage invites you. The addon accepts <em>only</em> your matched taxi.</p></div>
+    <span class="arrow">&rsaquo;</span>
+    <div class="step frame"><span class="num">III</span><h3>Pay</h3><p>The trade window opens itself. Type the fare, click Trade.</p></div>
+    <span class="arrow">&rsaquo;</span>
+    <div class="step frame portal"><span class="num">IV</span><h3>Step through</h3><p>The portal opens once your gold arrives. Missed it? The second one is free.</p></div>
+  </div>
+</body></html>

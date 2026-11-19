@@ -11,7 +11,7 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
   module contracts, file ownership, test simulator, in-game gates. Contracts there change only through the architect.
 - `docs/mock/portaxi.html` — clickable UX mock (open it in a browser).
 - `CLAUDE.local.md` (git-ignored, optional) — machine-specific notes: the game path, published mock link.
-- `tools/` — dev scripts (`link-addon.ps1`, `check.ps1`, `setup-tools.ps1`, `package.ps1` builds `dist/Portaxi-<version>.zip` for CurseForge).
+- `tools/` — dev scripts (`link-addon.ps1`, `check.ps1`, `setup-tools.ps1`, `package.ps1` builds `dist/ForeverPortaxi-<version>.zip` for CurseForge).
 - `tests/` — offline tests (`*_test.lua`, run by `tests\run.ps1`). `tests/lib/t.lua` is the test framework,
   `tests/lib/wowstub.lua` a fake Forever client (its header documents the API).
 
@@ -44,7 +44,7 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
   an entry on top of `Portaxi/Changelog.lua` (player-facing sentences; it feeds the What's new window).
   `tests/version_test.lua` fails when the three disagree. A `-dev` suffix marks a build that is not released:
   it never tells others to update.
-- Then `tools\package.ps1` builds `dist/Portaxi-<version>.zip`.
+- Then `tools\package.ps1` builds `dist/ForeverPortaxi-<version>.zip`.
 - The `VER|<version>` message (playbook D17) is the one message without a protocol version. Never change its
   format: every released Portaxi must keep reading it.
 

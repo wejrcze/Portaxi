@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="common.css">
+<style>
+:root{--w:1200px;--h:420px}
+body{display:flex;align-items:center;gap:52px;padding:0 64px}
+.logo{width:236px;height:236px;border-radius:22px;box-shadow:0 0 0 2px var(--trim),0 0 0 3px #000,0 18px 40px rgba(0,0,0,.6);flex:none}
+.copy{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0}
+h1{display:flex;flex-direction:column;gap:6px;font:700 92px/0.9 var(--f-display);color:var(--gold);letter-spacing:.04em;text-shadow:0 3px 0 #000}
+h1 small{font:700 34px/1 var(--f-display);color:var(--gold-dim);letter-spacing:.42em;text-shadow:0 2px 0 #000}
+.tag{font:500 30px/1.25 var(--f-body);color:var(--text)}
+.tag b{color:var(--mage);font-weight:600}
+.chips{display:flex;gap:10px;margin-top:6px}
+.card{width:300px;flex:none;align-self:center}
+.card .t{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(#352c20,#221c15);border-bottom:1px solid var(--trim);border-radius:6px 6px 0 0}
+.card .t b{font:700 15px var(--f-display);color:var(--gold);letter-spacing:.08em}
+.card .t small{font:12px var(--f-mono);color:var(--muted)}
+.card .b{padding:14px;display:flex;flex-direction:column;gap:10px}
+.rw{font:700 21px/1.2 var(--f-display);color:var(--rw);text-align:center;text-shadow:0 2px 0 #000}
+.row{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel-2);border:1px solid var(--edge);border-radius:4px}
+.row .grow{flex:1;min-width:0;font-weight:600}
+.row small{display:block;color:var(--muted);font:400 12px var(--f-body)}
+.take{background:linear-gradient(#8a1a12,#5c0f0a);border:1px solid #c4a043;color:var(--gold);font:600 14px var(--f-body);padding:6px 12px;border-radius:4px}
+</style></head>
+<body>
+  <img class="logo" src="../logo.png" alt="">
+  <div class="copy">
+    <span class="eyebrow">Addon for WoW Forever &middot; open beta</span>
+    <h1 aria-label="ForeverPortaxi"><small>FOREVER</small>PORTAXI</h1>
+    <p class="tag">Hail a <b>mage portal</b> like a taxi.<br>Pick a city, pay, step through.</p>
+    <div class="chips"><span class="chip">No server</span><span class="chip">Pay after you meet</span><span class="chip">One-click duty</span></div>
+  </div>
+  <div class="card frame">
+    <div class="t"><b>NEW FARE</b><small>on duty</small></div>
+    <div class="b">
+      <p class="rw">Orgrimmar &mdash; 3g</p>
+      <div class="row"><div class="grow">Thrallgar<small>Come-to-you &middot; resting</small></div><span class="money">3<i class="g"></i></span><span class="take">Take</span></div>
+      <div class="row"><div class="grow">Kezzi<small>(chat) WTB port UC</small></div><span class="money">1<i class="g"></i>50<i class="s"></i></span><span class="take">Invite</span></div>
+    </div>
+  </div>
+</body></html>

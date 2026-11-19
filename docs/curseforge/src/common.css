@@ -1,0 +1,18 @@
+/* Shared look of the CurseForge images: the palette and type of docs/mock/portaxi.html. */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=block");
+:root{
+  --stone:#13110e; --panel:#1e1a15; --panel-2:#28221b; --edge:#4a3f30; --trim:#8a6d2f;
+  --text:#ebe3d1; --muted:#a69a83; --gold:#ffd100; --gold-dim:#b8963a; --mage:#3fc7eb; --lock:#8788ee;
+  --ok:#5fd068; --rw:#ff4a2a;
+  --f-display:"Cinzel", Georgia, serif; --f-body:"IBM Plex Sans", "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", Consolas, monospace;
+}
+*{box-sizing:border-box;margin:0}
+html,body{width:var(--w);height:var(--h);overflow:hidden}
+body{background:radial-gradient(ellipse at 30% 40%,#221c15 0,var(--stone) 70%);color:var(--text);font:16px/1.5 var(--f-body)}
+.frame{background:var(--panel);border:1px solid #000;border-radius:6px;box-shadow:0 0 0 2px var(--trim),0 0 0 3px #000,0 18px 40px rgba(0,0,0,.55)}
+.eyebrow{font:500 14px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.chip{font:500 15px/1 var(--f-mono);padding:8px 12px;border:1px solid var(--gold-dim);border-radius:3px;color:var(--gold);white-space:nowrap}
+.money{font:500 15px var(--f-mono);white-space:nowrap}
+.money i{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 4px 0 2px}
+.money .g{background:#e6b422}.money .s{background:#c7ccd1}
