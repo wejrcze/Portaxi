@@ -82,6 +82,21 @@ T.test("pauses in words when the mage cannot hop", function()
   mage:advance(3)
   local v = mage.ns.UI.HopTab.view((mage.ns.Detect.current()))
   T.eq(v.pauses, "Rest in an inn or a city first: the scroll needs both of you resting.")
+  -- in-game 2026-11-19: Ask stayed grey on the way to the inn; asking is fine without resting
+  local fl = { list = { { fullName = "Zorg Axehand", level = 22, classStr = "Warrior", area = "Crossroads" } } }
+  mage.env.C_FriendList = {
+    SendWho = function() end,
+    GetNumWhoResults = function() return #fl.list, #fl.list end,
+    GetWhoInfo = function(i) return fl.list[i] end,
+  }
+  mage.ns.Who.search("The Barrens")
+  mage:fire("WHO_LIST_UPDATE")
+  v = mage.ns.UI.HopTab.view((mage.ns.Detect.current()))
+  T.eq(v.who[1].enabled, true, "Ask works while not resting")
+  T.eq(v.places, {})
+  mage:setItem(213548, 0)
+  mage:advance(3)
+  T.eq(mage.ns.UI.HopTab.view((mage.ns.Detect.current())).who[1].enabled, false, "not without scrolls")
   noErrors(mage)
 end)
 

@@ -231,10 +231,18 @@ function H.view(profile)
     whoList, whoZone = ns.Who.results()
   end
   local asked = module("Who", "awaiting") and ns.Who.awaiting() or {}
+  -- Asking takes a while (whisper, then their invite), so it is fine on the way to the inn: only resting may be
+  -- missing. The scroll itself still waits for both of you resting.
+  local canAsk = true
+  for _, code in ipairs(hop.hopPauses or {}) do
+    if code ~= "NOT_RESTING" then
+      canAsk = false
+    end
+  end
   local who = {}
   for i, entry in ipairs(whoList or {}) do
     who[i] = { text = whoText(entry), entry = entry, asked = asked[entry.key] ~= nil,
-               enabled = hop.HOP == true and not busy }
+               enabled = profile ~= nil and canAsk and not busy }
   end
   local request, warn = requestText(st)
   return {

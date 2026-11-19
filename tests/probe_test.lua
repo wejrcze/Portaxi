@@ -142,4 +142,28 @@ T.test("the log is capped at 100 entries and can be cleared", function()
   T.eq(#wow.env.PortaxiDB.probe.log, 0)
 end)
 
+T.test("Inn hop probe: /ptx who logs its own answer only, never another addon's or the player's /who", function()
+  local wow = client()
+  local list = { { fullName = "Zorg Axehand", level = 22, raceStr = "Orc", classStr = "Warrior", area = "Crossroads" } }
+  wow.env.C_FriendList = {
+    SendWho = function() end,
+    GetNumWhoResults = function() return #list, #list end,
+    GetWhoInfo = function(i) return list[i] end,
+  }
+  local function count()
+    local p = wow.env.PortaxiDB.probe
+    return p and #p.log or 0
+  end
+  local before = count()
+  wow:fire("WHO_LIST_UPDATE")
+  T.eq(count(), before, "a /who we did not send is not logged")
+  wow:slash('who z-"The Barrens"')
+  wow:fire("WHO_LIST_UPDATE")
+  T.ok(logHas(wow, 'results for z-"The Barrens": 1 shown'))
+  T.ok(logHas(wow, "Zorg Axehand, 22 Orc Warrior, Crossroads"))
+  local after = count()
+  wow:fire("WHO_LIST_UPDATE")
+  T.eq(count(), after, "only one answer per search")
+end)
+
 T.done()

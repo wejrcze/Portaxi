@@ -483,13 +483,16 @@ function handlers.PLAYER_MONEY()
 end
 
 function handlers.WHO_LIST_UPDATE()
+  if not who.pending then
+    return -- not our probe: the player's own /who, Inn hop's Search or ChatOffers' Where?
+  end
   local num = ns.api("C_FriendList.GetNumWhoResults", "GetNumWhoResults")
   local info = ns.api("C_FriendList.GetWhoInfo")
   local shown, total = 0, 0
   if num then
     shown, total = num()
   end
-  local after = who.pending and ("%.1f s"):format(GetTime() - who.pending) or "no search pending"
+  local after = ("%.1f s"):format(GetTime() - who.pending)
   who.pending = nil
   log("who", ("results for %s: %s shown, %s total, after %s; Who window open: %s"):format(tostring(who.filter),
     tostring(shown), tostring(total), after, tostring(FriendsFrame and FriendsFrame:IsShown() or false)))
