@@ -41,7 +41,7 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
 ## Code rules
 
 - Lua 5.1 (WoW). Code, comments and identifiers in English.
-- `Protocol` and `Market` modules must not call game APIs, so they can be tested offline.
+- `Protocol`, `Market` and `ChatParse` modules must not call game APIs, so they can be tested offline.
 - The addon never casts, uses items, trades or accepts on its own. It only prepares secure buttons;
   the click is always the player's. Exceptions decided in the playbook (D10, D11): the rider's addon
   accepts the group invite of the matched taxi only, the taxi's addon opens the trade window, and the

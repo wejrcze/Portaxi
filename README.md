@@ -83,6 +83,13 @@ The **Drive** tab appears when your character can drive.
   bookings addressed to you come first ("booked you").
 - Click **Take**. You can have one answer pending at a time; the rider confirms within 10 seconds or you are
   free again.
+- **Players without Portaxi.** While you are on duty, Portaxi also reads say, yell, whispers and the public
+  channels. A request for a portal to a city you serve, in English or Russian ("WTB port Org", "need portal to
+  UC?", "куплю порт в орг"), is listed with a blue stripe, *(chat)* and the start of the message. Sellers' ads
+  ("WTS portals ...") are ignored. Click **Invite**: Portaxi invites the player and whispers the city and your
+  price (pickup, or come-to-you if you only offer that) in English or Russian. The rest of the ride is up to you:
+  there is no ride panel and no payment check. Such a request stays listed for 2 minutes; `/ptx chat` turns
+  reading chat off and on.
 - The **duty box** is a small movable box shown while you are on duty: your services and prices (or why they
   are paused), the number of open requests, the best one with a *Take* button, and an *Off* button. Click its
   title to open the Drive tab. `/ptx box` locks or unlocks it, or shows it again after you closed it with *x*.
@@ -123,6 +130,7 @@ On its own it:
 
 - reads your character (class, portals, runes, scrolls, resting, place, gold) and talks on the hidden channel;
 - sends the party invite (taxi), and accepts the invite of the matched taxi and nobody else (rider);
+- reads public chat for taxi requests while you are on duty (it invites and whispers only when you click *Invite*);
 - opens the trade window with your matched partner (taxi);
 - leaves the two-person ride group after the ride (taxi).
 
@@ -140,6 +148,7 @@ It never:
 |---|---|
 | `/ptx show` | Open or close the Portaxi window. |
 | `/ptx box` | Lock or unlock the duty box, or show it again after you closed it. |
+| `/ptx chat` | Turn reading taxi requests from public chat on or off (on by default). |
 | `/ptx key <KEY>` | Bind a key to the Portaxi button; without a key, clear it. |
 | `/ptx ride [cancel]` | Show the active ride, or cancel it. |
 | `/ptx detect` | Show what the addon detects on this character. |
@@ -164,7 +173,8 @@ Test tools from the development phase (they log to `PortaxiDB.probe`; you do not
 - **You type the trade gold yourself.** Forever lets no addon set or fill trade gold (tested in game).
 - **Not verified in game yet**: accepting the invite automatically, two players with Portaxi on a full ride,
   whether the channel is shared between factions (Portaxi filters by faction anyway), the Alliance portal
-  spells, and the cast time and rules of the Scroll of Liminal Passage.
+  spells, the cast time and rules of the Scroll of Liminal Passage, and the requests from chat (the sender name
+  format in chat and the invite whisper).
 - English interface only. The end of a ride is detected by the English city name, so other client languages
   may not finish a ride on their own.
 - Thunder Bluff portals are learned at level 50.

@@ -36,6 +36,7 @@ ns.Const = {
   T = {
     OFFER = 150,        -- drop an offer without HELLO for this long
     REQUEST = 120,      -- a request expires
+    CHAT_REQUEST = 120, -- a request read from public chat expires (D16)
     COLLECT = 3,        -- hail: keep collecting TAKEs after the first one
     CONFIRM = 10,       -- taxi waits this long for CONFIRM after TAKE
     INVITE = 60,        -- group must form within this

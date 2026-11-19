@@ -64,6 +64,7 @@ Před vlnou 0 se commitne rozpracovaná práce na sondách.
 | D13 | Ikony měst jsou v MVP **ikony portálových kouzel** (`C_Spell.GetSpellTexture`), šedé přes `SetDesaturated`. Vlastní erby až ve vlně 3. | Agenti neumí bez dalších nástrojů vyrobit TGA. |
 | D14 | **Žádný `Bindings.xml`.** Secure tlačítko je globální `PortaxiNextButton`. Hráč ho spustí makrem `/click PortaxiNextButton`, nebo klávesou z nastavení addonu přes `SetOverrideBindingClick` (mimo boj). | Chybný `Bindings.xml` rozbije načtení addonu a jeho změna vyžaduje restart klienta. |
 | D15 | Moduly startují z `ns.on("READY", Module.start)`. `READY` přichází na `PLAYER_LOGIN`, kdy jsou SavedVariables už naplněné výchozími hodnotami. Moduly startují v pořadí TOC. | Jedno místo startu, předvídatelné pořadí. |
+| D16 | **Žádosti z veřejného chatu** (přání uživatele 2026-11-19). Na směně addon čte say, yell, whisper a číslované kanály (kromě `PortaxiNet`). Čistý modul `Core/ChatParse.lua` pozná žádost o portál nebo summon anglicky i rusky („WTB port Org“, „куплю порт в орг“) a odliší nabídky prodejců. `Core/ChatReq.lua` drží seznam žádostí do měst, kam taxík umí, `Const.T.CHAT_REQUEST` sekund. Žádost se v seznamu ukáže s modrým proužkem a tlačítkem *Invite*. Klik (hardwarová událost hráče) pošle `C_PartyInfo.InviteUnit` a whisper s městem a cenou (pickup, jinak come-to-you) v jazyce žádosti. Dál jízda běží ručně: bez Ride, bez kontroly platby. Summon se zatím jen rozpozná; zobrazí se až s warlocky. Vypíná a zapíná se příkazem `/ptx chat` (`PortaxiCharDB.chatRequests`). | Taxík obslouží i hráče bez addonu. Pozvánka a whisper jdou jen z kliknutí. |
 
 ---
 
@@ -98,7 +99,8 @@ PortaxiCharDB = { prices = { COME = 30000, PICK = 15000 }, onDuty = false, respT
 | `NET_MSG` | msg, key, rawSender, via (`"CHANNEL"`/`"WHISPER"`) | Net |
 | `MARKET_CHANGED` | — | Dispatch |
 | `HAIL_RESULT` | reqId, winner or nil | Dispatch |
-| `INCOMING_REQUEST` | request | Dispatch (taxík: nová poptávka, kterou umí splnit) |
+| `INCOMING_REQUEST` | request | Dispatch (taxík: nová poptávka, kterou umí splnit); ChatReq (žádost z chatu, `entry.chat = true`, D16) |
+| `CHAT_REQUESTS_CHANGED` | — | ChatReq (seznam žádostí z chatu se změnil, D16) |
 | `RIDE_STARTED` / `RIDE_STATE` | ride | Ride |
 | `TRADE_PAID` | reqId, copper | Trade (taxík) |
 | `TRADE_MANUAL` | what (`"open"`/`"prefill"`/`"short"`), … | Trade (RidePanel ukáže ruční krok) |

@@ -310,6 +310,18 @@ function Wow:receive(prefix, text, kind, sender)
   end
 end
 
+-- A public chat line reaches this client: kind "SAY" | "YELL" | "WHISPER" | "CHANNEL".
+-- opts.channel = base channel name (default "General" for CHANNEL), opts.guid = sender GUID.
+-- Argument order as CHAT_MSG_*: text, sender, language, channel, target, flags, zone channel id,
+-- channel index, channel base name, language id, line id, guid.
+function Wow:chat(kind, text, sender, opts)
+  opts = opts or {}
+  local base = opts.channel or (kind == "CHANNEL" and "General" or "")
+  self.lineId = (self.lineId or 0) + 1
+  self:fire("CHAT_MSG_" .. kind, text, sender, "Orcish", base ~= "" and ("1. " .. base) or "", "", "", 0,
+    base ~= "" and 1 or 0, base, 1, self.lineId, opts.guid or "")
+end
+
 -- Someone invites this player.
 function Wow:inviteFrom(name)
   self.pendingInviter = name
@@ -616,6 +628,17 @@ function Wow:buildEnv()
     return 0, nil
   end
   env.ChatFrame_RemoveChannel = function(frame, name) wow:record("ChatFrame_RemoveChannel", frame, name) end
+  -- Chat lines the addon sends (only from the player's click; whispers to chat riders, D16).
+  env.SendChatMessage = function(msg, kind, lang, target)
+    if #msg > 255 then error("chat message longer than 255 bytes", 2) end
+    wow:record("SendChatMessage", msg, kind, lang, target)
+  end
+  -- wow.guids[guid] = { name = "First", realm = "Surname" } for senders known only by GUID.
+  env.GetPlayerInfoByGUID = function(guid)
+    local p = wow.guids and wow.guids[guid]
+    if not p then return nil end
+    return "Warrior", "WARRIOR", "Orc", "Orc", 2, p.name, p.realm or ""
+  end
   env.DEFAULT_CHAT_FRAME = newWidget(wow, "ScrollingMessageFrame", "ChatFrame1", env.UIParent)
   env.NUM_CHAT_WINDOWS = 1
 

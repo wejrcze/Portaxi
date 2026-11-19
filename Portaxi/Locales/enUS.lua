@@ -102,6 +102,10 @@ L["%d s ago"] = "%d s ago"
 L["Take"] = "Take"
 L["Sent"] = "Sent"
 L["%d more requests"] = "%d more requests"
+L["(chat)"] = "(chat)"
+L["Invite again"] = "Invite again"
+L["Taxi requests from chat: on."] = "Taxi requests from chat: on."
+L["Taxi requests from chat: off."] = "Taxi requests from chat: off."
 
 -- Duty box ----------------------------------------------------------------------------------------
 L["On duty"] = "On duty"
@@ -120,6 +124,7 @@ L["The duty box shows while you are on duty as a taxi."] = "The duty box shows w
 -- Alerts ------------------------------------------------------------------------------------------
 L["Portaxi: %s wants %s (%s, %s)"] = "Portaxi: %s wants %s (%s, %s)"
 L["Portaxi: %s booked you to %s (%s, %s)"] = "Portaxi: %s booked you to %s (%s, %s)"
+L["Portaxi: %s wants %s (from chat)"] = "Portaxi: %s wants %s (from chat)"
 
 -- Ride panel and the secure button label (Core/Ride.lua) ---------------------------------------------
 L["Ride to %s"] = "Ride to %s"
@@ -201,6 +206,7 @@ L["Leave your group first: the taxi has to invite you."] = "Leave your group fir
 L["Go on duty to take requests."] = "Go on duty to take requests."
 L["Waiting for the rider to confirm your last answer."] = "Waiting for the rider to confirm your last answer."
 L["That request is gone."] = "That request is gone."
+L["Could not send the invite."] = "Could not send the invite."
 
 -- Ride steps, states and end reasons (RidePanel).
 L["Match"] = "Match"

@@ -297,7 +297,8 @@ end
 
 ns.commands.box = { fn = B.command, help = "duty box: lock or unlock it, or show it again after hiding" }
 
-for _, event in ipairs({ "READY", "PROFILE_CHANGED", "MARKET_CHANGED", "RIDE_STARTED", "RIDE_STATE" }) do
+for _, event in ipairs({ "READY", "PROFILE_CHANGED", "MARKET_CHANGED", "CHAT_REQUESTS_CHANGED", "RIDE_STARTED",
+  "RIDE_STATE" }) do
   ns.on(event, B.refresh)
 end
 ns.on("INCOMING_REQUEST", function()

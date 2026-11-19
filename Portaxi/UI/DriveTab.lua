@@ -1,7 +1,8 @@
 -- UI.DriveTab: the taxi page (shown only when services.canDrive). On-duty line with its toggle, the detection
 -- card (portal spells with city emblems, runes, scrolls, resting, offered services, pauses in words), price
 -- boxes per service and the open requests this taxi can serve (Dispatch.requests: bookings, then
--- market:openRequests) with Take buttons. Layout follows the mock v0.8 driver view.
+-- market:openRequests) with Take buttons, then requests read from public chat (ChatReq, D16: blue stripe,
+-- "(chat)", the start of the line, an Invite button). Layout follows the mock v0.8 driver view.
 -- Contract: playbook §2 "UI" and "Dispatch". Card F built it in wave 1, card G extended it in wave 2, card J
 -- polished it in wave 3. Redraws on MARKET_CHANGED, INCOMING_REQUEST, RIDE_STARTED and RIDE_STATE while visible.
 
@@ -279,31 +280,75 @@ local function onDuty()
   return db ~= nil and db.onDuty == true
 end
 
--- Requests to list: only on duty, from Dispatch.requests() (or market:openRequests without it).
+local function chatReq(name)
+  local c = ns.ChatReq
+  return type(c) == "table" and type(c[name]) == "function" and c[name] or nil
+end
+
+-- Requests to list: only on duty. Dispatch.requests() (players with Portaxi) first, then the requests read
+-- from public chat (ChatReq.list, D16).
 function D.requests()
   if not onDuty() then
     return {}
   end
   local fn = dispatchFn("requests")
-  return fn and fn() or {}
+  local list = fn and fn() or {}
+  local chat = chatReq("list")
+  for _, entry in ipairs(chat and chat() or {}) do
+    list[#list + 1] = entry
+  end
+  return list
+end
+
+local CHAT_QUOTE = 34 -- bytes of the chat line shown under a chat request
+
+-- The start of a chat line, cut on a whole UTF-8 character.
+local function quote(text)
+  text = tostring(text or "")
+  if #text <= CHAT_QUOTE then
+    return '"' .. text .. '"'
+  end
+  local cut = text:sub(1, CHAT_QUOTE):gsub("[\192-\255][\128-\191]*$", "")
+  return '"' .. cut .. '..."'
 end
 
 -- "Velvet to Orgrimmar" / "Come-to-you · 3g · 12 s ago" for a request entry; shared with the DutyBox.
+-- A chat request shows "(chat)" and the start of what the player wrote.
 function D.requestText(entry)
   local request = entry.request
   local city = ns.Const.CITY[request.dest]
   local who = L["%s to %s"]:format(request.key, city and L[city.name] or tostring(request.dest))
   if entry.booked then
     who = who .. " " .. L["(booked you)"]
+  elseif entry.chat then
+    who = who .. " " .. L["(chat)"]
   end
   local age = math.max(0, math.floor(ns.now() - (request.at or ns.now())))
-  local what = ("%s · %s · %s"):format(L[SERVICE_SHORT[entry.svc] or tostring(entry.svc)], W.money(entry.price),
-    L["%d s ago"]:format(age))
+  local what
+  if entry.chat then
+    what = ("%s · %s"):format(quote(entry.text), L["%d s ago"]:format(age))
+  else
+    what = ("%s · %s · %s"):format(L[SERVICE_SHORT[entry.svc] or tostring(entry.svc)], W.money(entry.price),
+      L["%d s ago"]:format(age))
+  end
   return who, what
+end
+
+-- Chat request: Invite (again after an invite), disabled off duty or during a ride.
+local function inviteState(entry)
+  if not chatReq("invite") or not onDuty() then
+    return "duty", L["Invite"]
+  elseif activeRide() then
+    return "busy", L["Invite"]
+  end
+  return nil, entry.invited and L["Invite again"] or L["Invite"]
 end
 
 -- Why the Take button of an entry is disabled, or nil; and the button text.
 function D.takeState(entry)
+  if entry.chat then
+    return inviteState(entry)
+  end
   local st = dispatchFn("status") and ns.Dispatch.status() or {}
   if st.pendingTake == entry.request.reqId then
     return "pending", L["Sent"]
@@ -322,13 +367,15 @@ local TAKE_ERRORS = {
   busy = "You are on a ride.",
   pending = "Waiting for the rider to confirm your last answer.",
   request = "That request is gone.",
+  invite = "Could not send the invite.",
 }
 
 local function drawRequest(row, entry)
   local who, what = D.requestText(entry)
   row.who:SetText(who)
   row.what:SetText(what)
-  row.stripe:SetShown(entry.booked == true)
+  row.stripe:SetShown(entry.booked == true or entry.chat == true)
+  row.stripe:SetVertexColor(unpack(entry.chat and C.CHAT or C.GOLD))
   W.setEmblem(row.emblem, entry.request.dest)
   W.setEmblemState(row.emblem, "plain")
   local blocker, text = D.takeState(entry)
@@ -378,7 +425,8 @@ local function redrawIfVisible()
   end
 end
 
-for _, event in ipairs({ "MARKET_CHANGED", "INCOMING_REQUEST", "RIDE_STARTED", "RIDE_STATE" }) do
+for _, event in ipairs({ "MARKET_CHANGED", "CHAT_REQUESTS_CHANGED", "INCOMING_REQUEST", "RIDE_STARTED",
+  "RIDE_STATE" }) do
   ns.on(event, redrawIfVisible)
 end
 
@@ -398,9 +446,13 @@ function D.setOnDuty(on)
   D.redraw()
 end
 
--- Taxi: answers a request (Dispatch.take); an error is shown under the list until the next redraw.
+-- Taxi: answers a request (Dispatch.take), or invites a chat rider (ChatReq.invite, reqId "chat:..."); an
+-- error is shown under the list until the next redraw.
 function D.take(reqId)
   local take = dispatchFn("take")
+  if type(reqId) == "string" and reqId:find("^chat:") then
+    take = chatReq("invite")
+  end
   if not take then
     return
   end
