@@ -21,6 +21,7 @@ local INT_DIGITS = 12      -- longer int tokens are out of range without parsing
 local SVC = { COME = true, PICK = true }
 local SVC_ORDER = { "COME", "PICK" } -- map keys are written in this order
 local BY = { rider = true, taxi = true }
+local HOPNO_WHY = { busy = true, declined = true, timeout = true } -- Inn hop (D20)
 local VER_MAX = 32 -- longest addon version string on the wire
 
 -- Splits s on a one-character separator, keeping empty parts.
@@ -229,10 +230,27 @@ local svc = enumKind(SVC)
 local price = intKind(Const.PRICE.MIN, Const.PRICE.MAX)
 local secs = intKind(0)
 local coord = intKind(-1000000, 1000000)
+local level = intKind(1, 100)
+
+-- A city key, or "" for none (Inn hop HOST at an inn).
+local optCity = {
+  enc = function(v)
+    if v == "" then
+      return ""
+    end
+    return city.enc(v)
+  end,
+  dec = function(s)
+    if s == "" then
+      return ""
+    end
+    return city.dec(s)
+  end,
+}
 
 local SPEC = {
   HELLO = {
-    { "fac", str }, { "cls", str }, { "lvl", intKind(1, 100) }, { "place", str },
+    { "fac", str }, { "cls", str }, { "lvl", level }, { "place", str },
     { "dests", listKind(city) }, { "ask", mapKind(svc, price, SVC_ORDER) }, { "resp", secs }, { "wait", secs },
   },
   BYE = {},
@@ -248,6 +266,13 @@ local SPEC = {
   CANCEL = { { "reqId", reqId }, { "by", enumKind(BY) }, { "late", boolKind } },
   -- Taxi on the map (D19): instance (continent) and world yards rounded to Const.FIELD.GRID; inst -1 = off the map.
   SPOT = { { "inst", intKind(-1, 1000000) }, { "n", coord }, { "w", coord }, { "busy", boolKind } },
+  -- Inn hop (D20): a host announces where it rests; a mage asks it for a hop, the host answers.
+  HOST = { { "fac", str }, { "lvl", level }, { "zone", strKind(true) }, { "sub", str }, { "city", optCity },
+           { "free", boolKind } },
+  UNHOST = {},
+  HOP = { { "reqId", reqId }, { "lvl", level } },
+  HOPOK = { { "reqId", reqId } },
+  HOPNO = { { "reqId", reqId }, { "why", enumKind(HOPNO_WHY) } },
 }
 
 Protocol.FIELDS = {}

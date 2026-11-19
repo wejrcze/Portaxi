@@ -2,6 +2,7 @@
 -- Contract: docs/PORTAXI_MVP_PLAYBOOK.md §2 "Detect" (rules: docs/PORTAXI_MVP_PLAN.md §4). Card C, wave 1.
 --   Detect.read(api) -> profile        reads only through the given api table (tests pass fakes)
 --   Detect.services(profile) -> services   pure
+--   Detect.hop(profile) -> hop             pure; Inn hop (D20): where we rest, and whether we can hop or host
 --   Detect.start()                     on READY (D15): read, fire PROFILE_CHANGED, then debounce game events
 --   Detect.current() -> profile, services   nil before start; callers must not modify the tables
 -- class and race are the uppercase tokens (UnitClass/UnitRace second return), e.g. "MAGE", "ORC".
@@ -27,6 +28,7 @@ local EVENTS = {
   "ZONE_CHANGED_NEW_AREA",
   "PLAYER_MONEY",
   "PLAYER_ENTERING_WORLD",
+  "GROUP_ROSTER_UPDATE", -- profile.party (Inn hop, D20)
 }
 
 -- Reading -----------------------------------------------------------------------------
@@ -68,6 +70,7 @@ function Detect.read(api)
     runes = count(api, C.ITEM.RUNE_OF_PORTALS),
     scrolls = count(api, C.ITEM.LIMINAL_SCROLL),
     shards = count(api, C.ITEM.SOUL_SHARD),
+    party = api.GetNumGroupMembers and tonumber(api.GetNumGroupMembers()) or 0, -- 0 = solo
   }
 end
 
@@ -118,6 +121,51 @@ function Detect.services(profile)
   }
 end
 
+-- Inn hop (D20) -----------------------------------------------------------------------
+
+local HOP_PAUSES = { "NOT_MAGE", "NO_SCROLL", "NOT_RESTING", "IN_GROUP" }
+local HOST_PAUSES = { "NOT_RESTING", "IN_GROUP" }
+
+local function pick(order, applies)
+  local out = {}
+  for _, reason in ipairs(order) do
+    if applies[reason] then
+      out[#out + 1] = reason
+    end
+  end
+  return out
+end
+
+-- hop = { place = "city" | "inn" | nil, city = city key | nil, HOP, HOST, hopPauses, hostPauses }.
+-- city: the Const.CITY whose name is the zone; place only while resting ("inn" = resting anywhere else).
+-- The scroll needs both players resting and the mage forms a two-person group, so both must be solo.
+function Detect.hop(profile)
+  local cityKey
+  for _, key in ipairs(C.CITY_ORDER) do
+    if C.CITY[key].name == profile.zone then
+      cityKey = key
+    end
+  end
+  local resting = profile.resting == true
+  local solo = (profile.party or 0) == 0
+  local hopApplies = {
+    NOT_MAGE = profile.class ~= "MAGE",
+    NO_SCROLL = (profile.scrolls or 0) <= 0,
+    NOT_RESTING = not resting,
+    IN_GROUP = not solo,
+  }
+  local hopPauses = pick(HOP_PAUSES, hopApplies)
+  local hostPauses = pick(HOST_PAUSES, hopApplies)
+  return {
+    place = resting and (cityKey and "city" or "inn") or nil,
+    city = cityKey,
+    HOP = #hopPauses == 0,
+    HOST = #hostPauses == 0,
+    hopPauses = hopPauses,
+    hostPauses = hostPauses,
+  }
+end
+
 -- Runtime -----------------------------------------------------------------------------
 
 local api, profile, services
@@ -156,6 +204,7 @@ local function gameApi()
     IsSpellKnown = ns.api("IsPlayerSpell", "IsSpellKnown", "C_SpellBook.IsSpellKnown"),
     GetItemCount = ns.api("C_Item.GetItemCount", "GetItemCount"),
     GetBestMapForUnit = ns.api("C_Map.GetBestMapForUnit"),
+    GetNumGroupMembers = ns.api("GetNumGroupMembers"),
   }
 end
 
@@ -234,6 +283,9 @@ local function show()
     list(destinations(p.portals)), p.runes, p.scrolls, p.shards))
   ns.say(("services: drive %s · COME %s · PICK %s · dests %s · pauses %s"):format(
     s.canDrive and "yes" or "no", onOff(s.COME), onOff(s.PICK), list(s.dests), list(s.pauses)))
+  local h = Detect.hop(p)
+  ns.say(("inn hop: place %s · hop %s (%s) · host %s (%s) · party %d"):format(tostring(h.place or "none"),
+    onOff(h.HOP), list(h.hopPauses), onOff(h.HOST), list(h.hostPauses), p.party or 0))
 end
 
 ns.commands.detect = { fn = show, help = "show what the addon detects on this character" }

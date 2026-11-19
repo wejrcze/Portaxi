@@ -23,8 +23,14 @@ local SAMPLES = {
   STATE = { type = "STATE", reqId = "Thalindra:4", state = "PORTAL_OPEN" },
   CANCEL = { type = "CANCEL", reqId = "Thalindra:4", by = "taxi", late = false },
   SPOT = { type = "SPOT", inst = 1, n = -1275, w = 4350, busy = false },
+  HOST = { type = "HOST", fac = "Horde", lvl = 23, zone = "The Barrens", sub = "The Crossroads", city = "", free = true },
+  UNHOST = { type = "UNHOST" },
+  HOP = { type = "HOP", reqId = "Pokakanek:1", lvl = 42 },
+  HOPOK = { type = "HOPOK", reqId = "Pokakanek:1" },
+  HOPNO = { type = "HOPNO", reqId = "Pokakanek:1", why = "declined" },
 }
-local TYPES = { "HELLO", "BYE", "HAIL", "BOOK", "TAKE", "CONFIRM", "GONE", "STATE", "CANCEL", "SPOT" }
+local TYPES = { "HELLO", "BYE", "HAIL", "BOOK", "TAKE", "CONFIRM", "GONE", "STATE", "CANCEL", "SPOT",
+  "HOST", "UNHOST", "HOP", "HOPOK", "HOPNO" }
 
 local function copy(t)
   local out = {}
@@ -89,6 +95,11 @@ T.test("FIELDS lists every type in wire order", function()
   T.eq(P.FIELDS.STATE, { "reqId", "state" })
   T.eq(P.FIELDS.CANCEL, { "reqId", "by", "late" })
   T.eq(P.FIELDS.SPOT, { "inst", "n", "w", "busy" })
+  T.eq(P.FIELDS.HOST, { "fac", "lvl", "zone", "sub", "city", "free" })
+  T.eq(P.FIELDS.UNHOST, {})
+  T.eq(P.FIELDS.HOP, { "reqId", "lvl" })
+  T.eq(P.FIELDS.HOPOK, { "reqId" })
+  T.eq(P.FIELDS.HOPNO, { "reqId", "why" })
   T.eq(P.FIELDS.VER, { "ver" })
   local n = 0
   for _ in pairs(P.FIELDS) do
@@ -427,6 +438,44 @@ T.test("Protocol.lua runs with ns.Const and the Lua standard library only (no ga
   T.eq(select(2, P2.decode("PING|1|x|Horde")), "type")
   T.eq(select(2, P2.encode(with("BOOK", { price = 1 }))), "range")
   T.eq(select(2, P2.decode(nil)), "format")
+end)
+
+
+-- Inn hop (D20) ----------------------------------------------------------------------------------
+
+T.test("HOST: wire form, a city host, an inn host with an empty city, range and required fields", function()
+  T.eq(P.encode(SAMPLES.HOST), "HOST|1|Horde|23|The Barrens|The Crossroads||1")
+  local city = P.decode("HOST|1|Horde|30|Orgrimmar|Valley of Strength|OG|0")
+  T.eq(city, { type = "HOST", fac = "Horde", lvl = 30, zone = "Orgrimmar", sub = "Valley of Strength", city = "OG",
+    free = false })
+  T.eq(P.decode("HOST|1|Horde|30|Riverglades|Rog'mar||1").sub, "Rog'mar", "apostrophes travel")
+  T.eq({ P.decode("HOST|1|Horde|30|Orgrimmar||XX|1") }, { nil, "range" }, "unknown city key")
+  T.eq({ P.decode("HOST|1|Horde|0|Orgrimmar|||1") }, { nil, "range" }, "level 0")
+  T.eq({ P.decode("HOST|1|Horde|30||||1") }, { nil, "field" }, "zone is required")
+  local m = { type = "HOST", fac = "Horde", lvl = 30, zone = "A|B,C", sub = "", city = "", free = true }
+  T.eq(P.encode(m), "HOST|1|Horde|30|ABC|||1", "separators are stripped")
+  m.zone = "|,"
+  T.eq({ P.encode(m) }, { nil, "field" }, "a zone that is only separators is empty")
+end)
+
+T.test("HOST with long zone and sub names stays within 255 bytes or is refused", function()
+  local m = { type = "HOST", fac = "Alliance", lvl = 60, zone = ("Z"):rep(100), sub = ("S"):rep(100), city = "",
+    free = true }
+  T.ok(#P.encode(m) <= 255)
+  m.sub = ("S"):rep(200)
+  T.eq({ P.encode(m) }, { nil, "too_long" })
+end)
+
+T.test("HOP, HOPOK, HOPNO: fields and the why values", function()
+  T.eq(P.encode(SAMPLES.HOP), "HOP|1|Pokakanek:1|42")
+  T.eq(P.encode(SAMPLES.HOPNO), "HOPNO|1|Pokakanek:1|declined")
+  for _, why in ipairs({ "busy", "declined", "timeout" }) do
+    T.eq(P.decode("HOPNO|1|X:1|" .. why).why, why)
+  end
+  T.eq({ P.decode("HOPNO|1|X:1|maybe") }, { nil, "range" })
+  T.eq({ P.decode("HOP|1||42") }, { nil, "field" }, "reqId required")
+  T.eq({ P.decode("HOP|1|X:1|101") }, { nil, "range" })
+  T.eq(P.decode("UNHOST|1"), { type = "UNHOST" })
 end)
 
 T.done()

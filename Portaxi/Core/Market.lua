@@ -1,4 +1,4 @@
--- Market: offers (from HELLO), open requests (from HAIL), expiry and hail matching.
+-- Market: offers (from HELLO), open requests (from HAIL), Inn hop hosts (from HOST, D20), expiry and hail matching.
 -- Pure module (playbook D3): no game API, no ns.now; time comes in as `now`.
 -- Contract: docs/PORTAXI_MVP_PLAYBOOK.md §2 "Market"; matching rules: docs/PORTAXI_MVP_PLAN.md §6.
 
@@ -35,7 +35,7 @@ local function sortedKeys(set)
 end
 
 function Market.new()
-  return setmetatable({ offerByKey = {}, requestByKey = {}, spotByKey = {} }, Market)
+  return setmetatable({ offerByKey = {}, requestByKey = {}, spotByKey = {}, hostByKey = {} }, Market)
 end
 
 -- Offers ------------------------------------------------------------------------------------------
@@ -59,6 +59,7 @@ end
 function Market:bye(key)
   self.offerByKey[key] = nil
   self.spotByKey[key] = nil
+  self.hostByKey[key] = nil
 end
 
 local function offerMatches(offer, q, svc)
@@ -142,6 +143,79 @@ function Market:nearby(q, now)
   return list
 end
 
+-- Inn hop hosts (D20) -----------------------------------------------------------------------------
+
+-- Stores a decoded HOST; a newer HOST from the same key replaces the old one.
+function Market:host(key, host, now)
+  self.hostByKey[key] = {
+    key = key,
+    fac = host.fac,
+    lvl = host.lvl,
+    zone = host.zone,
+    sub = host.sub or "",
+    city = host.city ~= "" and host.city or nil,
+    free = host.free == true,
+    seen = now,
+  }
+end
+
+function Market:unhost(key)
+  self.hostByKey[key] = nil
+end
+
+local function placeOrder(a, b)
+  if (a.kind == "city") ~= (b.kind == "city") then
+    return a.kind == "city"
+  end
+  if a.kind == "city" then
+    return a.rank < b.rank
+  end
+  if a.zone ~= b.zone then
+    return a.zone < b.zone
+  end
+  return a.sub < b.sub
+end
+
+-- Places with free hosts of q.faction (q.exclude = own key left out): { kind = "city" | "inn", city, zone, sub,
+-- label, hosts = { host, ... } by key }. Cities first in CITY_ORDER, then inns by zone and sub.
+function Market:hosts(q)
+  q = q or {}
+  local C = const()
+  local rank = {}
+  for i, key in ipairs(C.CITY_ORDER) do
+    rank[key] = i
+  end
+  local byId, places = {}, {}
+  for _, key in ipairs(sortedKeys(self.hostByKey)) do
+    local h = self.hostByKey[key]
+    if h.free and key ~= q.exclude and (q.faction == nil or h.fac == q.faction) then
+      local cityKey = h.city and C.CITY[h.city] and h.city or nil
+      local id = cityKey and ("city:" .. cityKey) or ("inn:" .. h.zone .. "|" .. h.sub)
+      local place = byId[id]
+      if not place then
+        local label
+        if cityKey then
+          label = C.CITY[cityKey].name
+        elseif h.sub ~= "" and h.sub ~= h.zone then
+          label = h.sub .. ", " .. h.zone
+        else
+          label = h.zone
+        end
+        place = { kind = cityKey and "city" or "inn", city = cityKey, zone = h.zone, sub = cityKey and "" or h.sub,
+                  label = label, hosts = {}, rank = cityKey and rank[cityKey] or 0 }
+        byId[id] = place
+        places[#places + 1] = place
+      end
+      place.hosts[#place.hosts + 1] = h
+    end
+  end
+  table.sort(places, placeOrder)
+  for _, place in ipairs(places) do
+    place.rank = nil
+  end
+  return places
+end
+
 -- Requests ----------------------------------------------------------------------------------------
 
 -- Stores a decoded HAIL; one open request per key, a new hail replaces the previous one.
@@ -173,8 +247,8 @@ local function requestExpired(request, now)
   return now - request.at >= const().T.REQUEST
 end
 
--- Drops offers without HELLO for T.OFFER, map spots without SPOT for T.SPOT_TTL and requests older than T.REQUEST.
--- Returns the removed offer keys and request reqIds, each sorted A-Z.
+-- Drops offers without HELLO for T.OFFER, map spots without SPOT for T.SPOT_TTL, requests older than T.REQUEST and
+-- hosts without HOST for T.HOST. Returns the removed offer keys, request reqIds and host keys, each sorted A-Z.
 function Market:expire(now)
   local T = const().T
   local removedKeys, removedIds = {}, {}
@@ -197,7 +271,14 @@ function Market:expire(now)
     end
   end
   table.sort(removedIds)
-  return removedKeys, removedIds
+  local removedHosts = {}
+  for _, key in ipairs(sortedKeys(self.hostByKey)) do
+    if now - self.hostByKey[key].seen >= T.HOST then
+      self.hostByKey[key] = nil
+      removedHosts[#removedHosts + 1] = key
+    end
+  end
+  return removedKeys, removedIds, removedHosts
 end
 
 -- The service the taxi would provide for this request and its price, or nil. COME first.

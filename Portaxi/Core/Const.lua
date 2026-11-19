@@ -54,6 +54,11 @@ ns.Const = {
     SPOT_CHECK = 5,     -- the taxi checks its own grid cell this often
     SPOT_GAP = 10,      -- at most one SPOT per this many seconds after a cell change
     SPOT_TTL = 90,      -- a rider drops a SPOT not repeated for this long
+    HOST = 150,         -- Inn hop (D20): drop a host without HOST for this long
+    HOST_HELLO = 60,    -- HOST period while hosting
+    HOST_JITTER = 10,   -- +- random jitter on the HOST period
+    HOP_ANSWER = 30,    -- the host answers a HOP within this, else HOPNO "timeout"
+    HOP_RETRY = 60,     -- a mage asks the same host again only after this
   },
   -- Taxi on the map (D19, docs/FIELD_TAXI_PLAN.md). Yards and yards per second.
   FIELD = {

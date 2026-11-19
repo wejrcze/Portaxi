@@ -81,7 +81,7 @@ T.test("default Horde mage: COME and PICK to OG and UC, PROFILE_CHANGED once at 
   T.eq(profile, {
     faction = "Horde", race = "Orc", class = "MAGE", level = 40, resting = true,
     zone = "Orgrimmar", subzone = "", mapId = 1454, money = 455723,
-    portals = { OG = true, UC = true }, runes = 7, scrolls = 9, shards = 0,
+    portals = { OG = true, UC = true }, runes = 7, scrolls = 9, shards = 0, party = 0,
   })
   T.eq(services, { canDrive = true, COME = true, PICK = true, dests = { "OG", "UC" }, pauses = {} })
   T.ok(fired[1].profile == profile and fired[1].services == services, "fired the current tables")
@@ -289,7 +289,7 @@ T.test("read uses only the api table; GetBestMapForUnit may be missing", functio
   T.eq(p, {
     faction = "Horde", race = "ORC", class = "MAGE", level = 41, resting = true,
     zone = "Orgrimmar", subzone = "Valley of Strength", mapId = nil, money = 12345,
-    portals = { UC = true }, runes = 3, scrolls = 1, shards = 2,
+    portals = { UC = true }, runes = 3, scrolls = 1, shards = 2, party = 0,
   })
 end)
 
@@ -343,6 +343,43 @@ T.test("/ptx detect shows pauses for a warrior", function()
   local out = table.concat(wow.printed, "\n", before + 1)
   T.ok(out:find("drive no", 1, true), out)
   T.ok(out:find("pauses NOT_MAGE", 1, true), out)
+end)
+
+-- Inn hop (D20) ----------------------------------------------------------------------------------
+
+T.test("hop: a resting solo mage with scrolls can hop and host; place city in a capital, inn elsewhere", function()
+  local Detect = bareDetect()
+  local h = Detect.hop(mageProfile({ resting = true, zone = "Orgrimmar", party = 0 }))
+  T.eq(h, { place = "city", city = "OG", HOP = true, HOST = true, hopPauses = {}, hostPauses = {} })
+  local inn = Detect.hop(mageProfile({ resting = true, zone = "The Barrens", party = 0 }))
+  T.eq({ inn.place, inn.city, inn.HOP }, { "inn", nil, true })
+end)
+
+T.test("hop: pauses in order; anyone resting and solo can host", function()
+  local Detect = bareDetect()
+  local h = Detect.hop(mageProfile({ resting = false, scrolls = 0, party = 2, zone = "Orgrimmar" }))
+  T.eq(h.place, nil, "no place while not resting")
+  T.eq(h.city, "OG", "the city is known anyway")
+  T.eq(h.hopPauses, { "NO_SCROLL", "NOT_RESTING", "IN_GROUP" })
+  T.eq(h.hostPauses, { "NOT_RESTING", "IN_GROUP" })
+  T.eq({ h.HOP, h.HOST }, { false, false })
+  local warrior = Detect.hop(mageProfile({ class = "WARRIOR", scrolls = 0, resting = true, party = 0,
+    zone = "Undercity" }))
+  T.eq(warrior.hopPauses, { "NOT_MAGE", "NO_SCROLL" })
+  T.eq({ warrior.HOP, warrior.HOST, warrior.place, warrior.city }, { false, true, "city", "UC" })
+  T.eq(Detect.hop(mageProfile({ resting = true })).HOST, true, "party missing counts as solo")
+end)
+
+T.test("in game: joining a group re-reads the profile (party) and hop turns off", function()
+  local wow, fired = settled()
+  T.eq(wow.ns.Detect.hop(wow.ns.Detect.current()).HOP, true)
+  wow:joinParty("Velvet")
+  wow:advance(DEBOUNCE)
+  local p = wow.ns.Detect.current()
+  T.eq(p.party, 2)
+  T.eq(wow.ns.Detect.hop(p).hopPauses, { "IN_GROUP" })
+  T.ok(#fired >= 2)
+  T.eq(#wow.errors, 0)
 end)
 
 T.done()

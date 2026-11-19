@@ -445,4 +445,61 @@ T.test("Market.lua runs with only ns.Const and the Lua standard library (no game
   T.eq(touched, {}, "no other global was read")
 end)
 
+-- Inn hop hosts (D20) ------------------------------------------------------------------------------
+
+local function hostMsg(over)
+  local h = { fac = "Horde", lvl = 30, zone = "The Barrens", sub = "The Crossroads", city = "", free = true }
+  for k, v in pairs(over or {}) do
+    h[k] = v
+  end
+  return h
+end
+
+T.test("hosts: grouped by place, cities first in CITY_ORDER, then inns by zone and sub; labels", function()
+  local m = Market.new()
+  m:host("Zed", hostMsg(), 10)
+  m:host("Amy", hostMsg(), 10)
+  m:host("Uli", hostMsg({ zone = "Undercity", sub = "Trade Quarter", city = "UC" }), 10)
+  m:host("Ola", hostMsg({ zone = "Orgrimmar", sub = "Valley of Strength", city = "OG" }), 10)
+  m:host("Rog", hostMsg({ zone = "Riverglades", sub = "Rog'mar" }), 10)
+  m:host("Ash", hostMsg({ zone = "Ashenvale", sub = "" }), 10)
+  local places = m:hosts({ faction = "Horde" })
+  local labels = {}
+  for i, p in ipairs(places) do
+    labels[i] = p.label
+  end
+  T.eq(labels, { "Orgrimmar", "Undercity", "Ashenvale", "Rog'mar, Riverglades", "The Crossroads, The Barrens" })
+  T.eq({ places[1].kind, places[1].city, places[3].kind, places[3].city }, { "city", "OG", "inn", nil })
+  T.eq({ places[5].hosts[1].key, places[5].hosts[2].key }, { "Amy", "Zed" }, "hosts by key")
+  T.eq(places[1].sub, "", "a city is one place whatever the quarter")
+end)
+
+T.test("hosts: busy hosts, other factions and the own key are left out; HOST replaces, UNHOST and BYE remove", function()
+  local m = Market.new()
+  m:host("Busy", hostMsg({ free = false }), 0)
+  m:host("Ally", hostMsg({ fac = "Alliance" }), 0)
+  m:host("Me", hostMsg(), 0)
+  m:host("Kim", hostMsg(), 0)
+  local places = m:hosts({ faction = "Horde", exclude = "Me" })
+  T.eq(#places, 1)
+  T.eq(#places[1].hosts, 1)
+  T.eq(places[1].hosts[1].key, "Kim")
+  m:host("Kim", hostMsg({ zone = "Orgrimmar", sub = "", city = "OG" }), 5)
+  T.eq(m:hosts({ faction = "Horde", exclude = "Me" })[1].label, "Orgrimmar", "a newer HOST moves the host")
+  m:unhost("Kim")
+  m:bye("Me")
+  T.eq(m:hosts({ faction = "Horde" }), {})
+end)
+
+T.test("hosts expire after T.HOST without HOST; expire returns their keys third", function()
+  local m = Market.new()
+  m:host("Old", hostMsg(), 0)
+  m:host("New", hostMsg(), 100)
+  local keys, ids, hosts = m:expire(Const.T.HOST - 1)
+  T.eq({ keys, ids, hosts }, { {}, {}, {} })
+  keys, ids, hosts = m:expire(Const.T.HOST)
+  T.eq(hosts, { "Old" })
+  T.eq(#m:hosts({ faction = "Horde" })[1].hosts, 1)
+end)
+
 T.done()

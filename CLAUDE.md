@@ -11,7 +11,7 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
   module contracts, file ownership, test simulator, in-game gates. Contracts there change only through the architect.
 - `docs/FIELD_TAXI_PLAN.md` — plan of the map feature (D19): mages levelling outside show on riders' world map.
 - `docs/INN_HOP_PLAN.md` — plan of the Inn hop feature (a mage scrolls to a resting host at any inn or capital);
-  decisions R1–R5 confirmed; next step is the in-game phase 0 in its §3.
+  decisions R1–R5 confirmed, D20 and its contracts in the playbook; steps 1–3 done, next is step 4 (Dispatch, Ride).
 - `docs/mock/portaxi.html` — clickable UX mock (open it in a browser).
 - `CLAUDE.local.md` (git-ignored, optional) — machine-specific notes: the game path, published mock link.
 - `tools/` — dev scripts (`link-addon.ps1`, `check.ps1`, `setup-tools.ps1`, `package.ps1` builds `dist/ForeverPortaxi-<version>.zip` for CurseForge).
@@ -62,9 +62,10 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
 - Lua 5.1 (WoW). Code, comments and identifiers in English.
 - `Protocol`, `Market` and `ChatParse` modules must not call game APIs, so they can be tested offline.
 - The addon never casts, uses items, trades or accepts on its own. It only prepares secure buttons;
-  the click is always the player's. Exceptions decided in the playbook (D10, D11): the rider's addon
-  accepts the group invite of the matched taxi only, the taxi's addon opens the trade window, and the
-  rider's addon prefills the agreed gold. Accepting the trade itself is always the player's click.
+  the click is always the player's. Exceptions decided in the playbook (D10, D11, D20): the rider's addon
+  accepts the group invite of the matched taxi only, an Inn hop host's addon accepts the invite of the mage
+  whose hop the host just accepted, the taxi's addon opens the trade window, and the rider's addon prefills
+  the agreed gold. Accepting the trade itself is always the player's click.
 - Spell and item IDs live in `Portaxi/Core/Const.lua`; phase 0 verifies them on Forever.
 - Forever is a modern client (1.60.x, build 70959+): many classic globals are gone (e.g. `GetItemCount`;
   use `C_Item.GetItemCount`). Prefer `C_` namespace APIs and resolve uncertain ones at runtime with a fallback.

@@ -141,9 +141,9 @@ kromě povinných kliků (Accept, tlačítko Portaxi). Záloha `/who` s hráčem
 
 | Krok | Obsah | Hotovo, když |
 |---|---|---|
-| 1 | Fáze 0: sonda `/ptx who`, uživatel ověří H0.1–H0.5. | Tabulka §3 vyplněná; rozhodnutí v §9 potvrzená. |
-| 2 | Architekt: `Const`, kontrakty v playbooku (§5, §6), TOC s prázdnými `Who.lua` a `HopTab.lua`. | `check.ps1` zelený, klient po restartu načte addon. |
-| 3 | Souběžně: `Protocol` + `Market` (čisté, testy); `Detect`; `Who`. | Testy zelené. |
+| 1 | Fáze 0: sonda `/ptx who`, uživatel ověří H0.1–H0.5. | Tabulka §3 vyplněná; rozhodnutí v §9 potvrzená. **✓ 2026-11-19** (zbývá cooldown `/who`, hospody, kontinenty; neblokuje) |
+| 2 | Architekt: `Const`, kontrakty v playbooku (§5, §6), TOC s prázdnými `Who.lua` a `HopTab.lua`. | `check.ps1` zelený, klient po restartu načte addon. **✓ 2026-11-19** (D20 a „Inn hop (D20)“ v playbooku §2) |
+| 3 | Souběžně: `Protocol` + `Market` (čisté, testy); `Detect`; `Who`. | Testy zelené. **✓ 2026-11-19** bez `Who` (přesunut do kroku 4, potřebuje `Ride` s `noAddon`) |
 | 4 | `Dispatch` (HOST, HOP handshake) + `Ride` svc `HOP` + simulátor `sim_hop`. | Scénář hopu zelený v simulátoru. |
 | 5 | UI: záložka Hop, přepínač hostování, alert hostiteli, `RidePanel` pro `HOP`, texty. | `ui_smoke_test` zelený; ve hře okno bez chyb. |
 | 6 | Brána ve hře se dvěma hráči (§7), opravy. | Tři hopy po sobě + jeden přes `/who`. |
