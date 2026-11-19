@@ -11,7 +11,7 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
   module contracts, file ownership, test simulator, in-game gates. Contracts there change only through the architect.
 - `docs/mock/portaxi.html` — clickable UX mock (open it in a browser).
 - `CLAUDE.local.md` (git-ignored, optional) — machine-specific notes: the game path, published mock link.
-- `tools/` — dev scripts (`link-addon.ps1`, `check.ps1`, `setup-tools.ps1`).
+- `tools/` — dev scripts (`link-addon.ps1`, `check.ps1`, `setup-tools.ps1`, `package.ps1` builds `dist/Portaxi-<version>.zip` for CurseForge).
 - `tests/` — offline tests (`*_test.lua`, run by `tests\run.ps1`). `tests/lib/t.lua` is the test framework,
   `tests/lib/wowstub.lua` a fake Forever client (its header documents the API).
 

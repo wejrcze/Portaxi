@@ -13,3 +13,6 @@ desktop.ini
 
 # Machine-specific notes for Claude Code
 CLAUDE.local.md
+
+# Release zips built by tools/package.ps1
+dist/

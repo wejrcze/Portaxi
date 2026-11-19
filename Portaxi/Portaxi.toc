@@ -1,7 +1,8 @@
 ## Interface: 16001
 ## Title: Portaxi
 ## Notes: Portal taxi network for mages and warlocks.
-## Version: 0.1.0-dev
+## Version: 0.1.0
+## Author: wejrcze
 ## SavedVariables: PortaxiDB
 ## SavedVariablesPerCharacter: PortaxiCharDB
 
