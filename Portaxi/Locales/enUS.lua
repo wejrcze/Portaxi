@@ -113,7 +113,7 @@ L["Reading public chat for taxi requests and offers: off."] =
 
 -- Duty box ----------------------------------------------------------------------------------------
 L["On duty"] = "On duty"
-L["On duty (locked)"] = "On duty (locked)"
+L["%s (locked)"] = "%s (locked)"
 L["Off"] = "Off"
 L["On a ride"] = "On a ride"
 L["No open requests"] = "No open requests"
@@ -187,6 +187,24 @@ L["Version %s"] = "Version %s"
 L["Got it"] = "Got it"
 L["/ptx news shows this again."] = "/ptx news shows this again."
 
+-- Taxi on the map (D19): Field, MapPins, DutyBox, RideTab.
+L["Map on: riders near you who look for a ride see you on their map."] =
+  "Map on: riders near you who look for a ride see you on their map."
+L["Map on, but you are not shown: %s"] = "Map on, but you are not shown: %s"
+L["Map off."] = "Map off."
+L["~%d yd · ~%d s on foot"] = "~%d yd · ~%d s on foot"
+L["Busy: fighting or on a ride."] = "Busy: fighting or on a ride."
+L["Click: ride to %s"] = "Click: ride to %s"
+L["Asked %s for a ride to %s."] = "Asked %s for a ride to %s."
+L["Busy"] = "Busy"
+L["Map"] = "Map"
+L["On the map"] = "On the map"
+L["Taxi on the map"] = "Taxi on the map"
+L["While levelling: riders near you who look for a ride see you on their map."] =
+  "While levelling: riders near you who look for a ride see you on their map."
+L["You are on the map."] = "You are on the map."
+L["Not shown."] = "Not shown."
+
 -- Indirect keys -----------------------------------------------------------------------------------
 -- Cities (Const.CITY[key].name) and factions (UnitFactionGroup).
 L["Orgrimmar"] = "Orgrimmar"
@@ -256,3 +274,12 @@ L["The ride failed on %s's side."] = "The ride failed on %s's side."
 L["%s cancelled the ride."] = "%s cancelled the ride."
 L["Nobody paid in time."] = "Nobody paid in time."
 L["You cancelled the ride."] = "You cancelled the ride."
+
+-- Why a taxi is not on the map (Field.REASONS).
+L["Map is off."] = "Map is off."
+L["You are off duty."] = "You are off duty."
+L["No pickup to offer: you need a portal and a Rune of Portals."] =
+  "No pickup to offer: you need a portal and a Rune of Portals."
+L["Resting: riders here get the town taxi, not the map."] = "Resting: riders here get the town taxi, not the map."
+L["Not shown inside instances."] = "Not shown inside instances."
+L["This client gives the addon no position."] = "This client gives the addon no position."

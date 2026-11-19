@@ -17,6 +17,7 @@ Core/Market.lua
 Core/Detect.lua
 Core/Net.lua
 Core/Dispatch.lua
+Core/Field.lua
 Core/ChatParse.lua
 Core/ChatReq.lua
 Core/ChatOffers.lua
@@ -33,5 +34,6 @@ UI/RideTab.lua
 UI/DriveTab.lua
 UI/RidePanel.lua
 UI/Arrow.lua
+UI/MapPins.lua
 UI/DutyBox.lua
 UI/WhatsNew.lua

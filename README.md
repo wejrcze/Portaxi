@@ -43,6 +43,11 @@ Open the window and stay on the **Ride** tab.
      that taxi to accept.
    A request stays open for 2 minutes. *Cancel* withdraws it.
 
+**Taxis near you.** Out in the world (not resting), after you pick a city, mages who level near you with *Map*
+switched on are listed first in Browse with a green stripe, how far they are and how long the walk takes, and
+show as a green circle with a portal icon on your world map. The circle is the rough area (about 75 yards); the
+exact spot comes with the arrow once you are in their group. Click the pin or *Book* to ask for a pickup.
+
 You cannot hail or book for more gold than you carry, while you are in a group (the taxi has to invite you), or
 to the city you are already in.
 
@@ -100,6 +105,15 @@ The **Drive** tab appears when your character can drive.
   are paused), the number of open requests, the best one with a *Take* button, and an *Off* button. Click its
   title to open the Drive tab. `/ptx box` locks or unlocks it, or shows it again after you closed it with *x*.
 
+### Taxi on the map (while levelling)
+
+Click **Map** in the duty box (or `/ptx field`) to be found by riders near you while you level. It also puts you on
+duty. While you are on duty, not resting and outside instances, your addon sends your position rounded to about
+75 yards every 30 seconds and when you move on; riders of your faction on the same continent who look for a ride
+and are not resting see you within about 1500 yards. You then get only their bookings, not hails from town. In a
+town or inn you are an ordinary taxi again and disappear from the map. While you fight or ride, your pin is grey
+and cannot be booked.
+
 ### The Portaxi button
 
 Portaxi never casts for you. When there is something to cast, it prepares the **Portaxi button**
@@ -148,6 +162,8 @@ On its own it:
 - reads your character (class, portals, runes, scrolls, resting, place, gold) and talks on the hidden channel,
   including its version number;
 - sends the party invite (taxi), and accepts the invite of the matched taxi and nobody else (rider);
+- with *Map* on, sends your position rounded to about 75 yards to the hidden channel while you are out in the
+  world (taxi);
 - reads public chat for taxi requests while you are on duty (it invites and whispers only when you click *Invite*);
 - opens the trade window with your matched partner (taxi);
 - leaves the two-person ride group after the ride (taxi).
@@ -166,6 +182,7 @@ It never:
 |---|---|
 | `/ptx show` | Open or close the Portaxi window. |
 | `/ptx box` | Lock or unlock the duty box, or show it again after you closed it. |
+| `/ptx field` | Turn *Map* on or off: be found on riders' maps while you level (taxi). |
 | `/ptx chat` | Turn reading taxi requests from public chat on or off (on by default). |
 | `/ptx key <KEY>` | Bind a key to the Portaxi button; without a key, clear it. |
 | `/ptx ride [cancel]` | Show the active ride, or cancel it. |
@@ -195,6 +212,9 @@ Test tools from the development phase (they log to `PortaxiDB.probe`; you do not
   whether the channel is shared between factions (Portaxi filters by faction anyway), the Alliance portal
   spells, the cast time and rules of the Scroll of Liminal Passage, and the requests from chat (the sender name
   format in chat and the invite whisper).
+- **Map not verified in game yet**: world positions (`UnitPosition`, `C_Map`) and pins on the world map on
+  Forever. Without positions there is no map at all; without the world map canvas there are no pins, but Browse
+  still lists the taxis near you.
 - English interface only. The end of a ride is detected by the English city name, so other client languages
   may not finish a ride on their own.
 - Thunder Bluff portals are learned at level 50.

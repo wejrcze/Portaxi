@@ -35,7 +35,7 @@ local function sortedKeys(set)
 end
 
 function Market.new()
-  return setmetatable({ offerByKey = {}, requestByKey = {} }, Market)
+  return setmetatable({ offerByKey = {}, requestByKey = {}, spotByKey = {} }, Market)
 end
 
 -- Offers ------------------------------------------------------------------------------------------
@@ -58,6 +58,7 @@ end
 
 function Market:bye(key)
   self.offerByKey[key] = nil
+  self.spotByKey[key] = nil
 end
 
 local function offerMatches(offer, q, svc)
@@ -96,6 +97,51 @@ function Market:offers(q)
   return list
 end
 
+-- Taxis on the map (D19) ---------------------------------------------------------------------------
+
+-- Stores a decoded SPOT: { inst, n, w, busy, at }. Kept apart from the offers, so a SPOT that comes before the
+-- first HELLO (a rider who just logged in) counts once the HELLO arrives; nearby() needs both. inst -1 (the taxi
+-- left the map) removes it. Returns true when something changed.
+function Market:spot(key, spot, now)
+  if spot.inst < 0 then
+    local had = self.spotByKey[key] ~= nil
+    self.spotByKey[key] = nil
+    return had
+  end
+  self.spotByKey[key] = { inst = spot.inst, n = spot.n, w = spot.w, busy = spot.busy == true, at = now }
+  return true
+end
+
+local function spotLive(spot, now)
+  return spot ~= nil and now - spot.at < const().T.SPOT_TTL
+end
+
+-- Taxis on the map near a rider: offers with a live spot on q.inst within Const.FIELD.RANGE yards of (q.n, q.w)
+-- that serve q.dest with PICK for q.faction, except q.exclude (own key). Entries are the Browse entries
+-- { key, svc = "PICK", price, offer } plus yards (from the rider to the spot), busy and spot; nearest first.
+function Market:nearby(q, now)
+  local range = const().FIELD.RANGE
+  local list = {}
+  for key, offer in pairs(self.offerByKey) do
+    local spot = self.spotByKey[key]
+    if offer.key ~= q.exclude and spotLive(spot, now) and spot.inst == q.inst and offerMatches(offer, q, "PICK") then
+      local dn, dw = spot.n - q.n, spot.w - q.w
+      local yards = math.sqrt(dn * dn + dw * dw)
+      if yards <= range then
+        list[#list + 1] = { key = offer.key, svc = "PICK", price = offer.ask.PICK, offer = offer, yards = yards,
+                            busy = spot.busy, spot = spot }
+      end
+    end
+  end
+  table.sort(list, function(a, b)
+    if a.yards ~= b.yards then
+      return a.yards < b.yards
+    end
+    return a.key < b.key
+  end)
+  return list
+end
+
 -- Requests ----------------------------------------------------------------------------------------
 
 -- Stores a decoded HAIL; one open request per key, a new hail replaces the previous one.
@@ -127,7 +173,7 @@ local function requestExpired(request, now)
   return now - request.at >= const().T.REQUEST
 end
 
--- Drops offers without HELLO for T.OFFER and requests older than T.REQUEST.
+-- Drops offers without HELLO for T.OFFER, map spots without SPOT for T.SPOT_TTL and requests older than T.REQUEST.
 -- Returns the removed offer keys and request reqIds, each sorted A-Z.
 function Market:expire(now)
   local T = const().T
@@ -136,6 +182,11 @@ function Market:expire(now)
     if now - self.offerByKey[key].seen >= T.OFFER then
       self.offerByKey[key] = nil
       removedKeys[#removedKeys + 1] = key
+    end
+  end
+  for key, spot in pairs(self.spotByKey) do
+    if not spotLive(spot, now) then
+      self.spotByKey[key] = nil
     end
   end
   for _, key in ipairs(sortedKeys(self.requestByKey)) do

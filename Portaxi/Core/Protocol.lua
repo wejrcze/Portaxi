@@ -228,6 +228,7 @@ local city = enumKind(Const.CITY)
 local svc = enumKind(SVC)
 local price = intKind(Const.PRICE.MIN, Const.PRICE.MAX)
 local secs = intKind(0)
+local coord = intKind(-1000000, 1000000)
 
 local SPEC = {
   HELLO = {
@@ -245,6 +246,8 @@ local SPEC = {
   GONE = { { "reqId", reqId } },
   STATE = { { "reqId", reqId }, { "state", str } },
   CANCEL = { { "reqId", reqId }, { "by", enumKind(BY) }, { "late", boolKind } },
+  -- Taxi on the map (D19): instance (continent) and world yards rounded to Const.FIELD.GRID; inst -1 = off the map.
+  SPOT = { { "inst", intKind(-1, 1000000) }, { "n", coord }, { "w", coord }, { "busy", boolKind } },
 }
 
 Protocol.FIELDS = {}

@@ -58,6 +58,11 @@ local APIS = {
   "C_Map.GetBestMapForUnit",
   "C_Map.GetPlayerMapPosition",
   "C_Map.GetWorldPosFromMapPos",
+  "C_Map.GetMapPosFromWorldPos", -- D19 pins on the world map
+  "CreateVector2D",
+  "WorldMapFrame.ScrollContainer.Child",
+  "IsInInstance",
+  "UnitAffectingCombat",
   "UnitPosition",
   "GetPlayerFacing",
   "MoneyInputFrame_SetCopper",

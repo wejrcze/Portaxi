@@ -9,6 +9,8 @@
 -- Browse lists mages' ads from public chat (ChatOffers, D18) after the Portaxi taxis: a blue stripe, "(chat)",
 -- where the mage stands (or the start of the ad), the price they named, an Invite button, and a Where? button
 -- that asks /who while the place is unknown.
+-- Taxis on the map (D19) come first in Browse while the rider may see them (Field.nearby): a green stripe, the
+-- distance and the walk instead of the zone, nearest first. Their Book sends the rider's own ETA along.
 
 local _, ns = ...
 
@@ -396,6 +398,8 @@ local function bookBlocker(offer, p, carried, st)
     return inviteBlocker(offer, carried, st)
   elseif not dispatchFn("book") or st.hail or activeRide() then
     return "busy"
+  elseif offer.busy then
+    return "fighting"
   elseif IsInGroup() then
     return "group"
   elseif carried and offer.price > carried then
@@ -419,10 +423,21 @@ end
 
 local function drawTaxi(row, o, blocker)
   row.who:SetText(("%s · %s"):format(o.key, L[SERVICE_SHORT[o.svc]]))
-  row.place:SetText(o.offer and o.offer.place or "")
+  if o.near then
+    row.place:SetText(L["~%d yd · ~%d s on foot"]:format(math.floor(o.yards + 0.5), o.eta))
+  else
+    row.place:SetText(o.offer and o.offer.place or "")
+  end
   row.price:SetText(W.money(o.price))
-  row.book:SetText(blocker == "money" and L["Too dear"] or L["Book"])
-  row.stripe:Hide()
+  if blocker == "money" then
+    row.book:SetText(L["Too dear"])
+  elseif blocker == "fighting" then
+    row.book:SetText(L["Busy"])
+  else
+    row.book:SetText(L["Book"])
+  end
+  row.stripe:SetShown(o.near == true)
+  row.stripe:SetVertexColor(C.OK[1], C.OK[2], C.OK[3])
   row.where:Hide()
   row.who:SetWidth(200)
   row.place:SetWidth(200)
@@ -439,6 +454,7 @@ local function drawChat(row, o, blocker)
     row.book:SetText(o.invited and L["Invite again"] or L["Invite"])
   end
   row.stripe:Show()
+  row.stripe:SetVertexColor(C.CHAT[1], C.CHAT[2], C.CHAT[3])
   local c = ns.ChatOffers
   row.where:SetShown(o.whoAt == nil and type(c) == "table" and type(c.locate) == "function")
   local width = row.where:IsShown() and 150 or 200 -- room for Where?
@@ -446,9 +462,28 @@ local function drawChat(row, o, blocker)
   row.place:SetWidth(width)
 end
 
--- Portaxi taxis first (cheapest first), then mages' ads from chat.
+-- Taxis on the map near the rider (D19), nearest first; empty while the rider may not see them.
+local function nearbyFor(dest)
+  local F = ns.Field
+  if not (dest and type(F) == "table" and type(F.nearby) == "function") then
+    return {}
+  end
+  return (F.nearby(dest))
+end
+
+-- Taxis on the map first (nearest first), then the other Portaxi taxis (cheapest first), then mages' ads from chat.
 local function browseList(dest)
-  local list = offersFor(dest)
+  local list, near = {}, {}
+  for _, o in ipairs(nearbyFor(dest)) do
+    o.near = true
+    near[o.key] = true
+    list[#list + 1] = o
+  end
+  for _, o in ipairs(offersFor(dest)) do
+    if not (near[o.key] and o.svc == "PICK") then
+      list[#list + 1] = o
+    end
+  end
   for _, o in ipairs(chatOffersFor(dest)) do
     list[#list + 1] = o
   end
@@ -580,8 +615,11 @@ function R.book(offer)
     return
   end
   local book = dispatchFn("book")
+  if offer.yards and offer.eta then
+    offer.near = true -- an entry from the map (MapPins) is booked like a Browse row of a taxi on the map
+  end
   if book and bookBlocker(offer, R.profile, money(), status()) == nil then
-    local ok, err = book(offer.key, R.dest, offer.svc)
+    local ok, err = book(offer.key, R.dest, offer.svc, offer.near and offer.eta or nil)
     R.error = (not ok) and err or nil
     R.redraw()
   end

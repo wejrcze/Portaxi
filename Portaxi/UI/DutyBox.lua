@@ -5,8 +5,11 @@
 --   a Take button (Dispatch.take); small Off and hide (x) buttons. Drag to move unless locked; position,
 --   lock and the hidden flag live in PortaxiDB.ui.dutyBox. Pulses on INCOMING_REQUEST.
 --   DutyBox.refresh() ; /ptx box toggles the lock, or shows the box again after the user hid it.
+--   Map toggle (D19): Field.setOn; gold while switched on, the title says "On the map" while the taxi is shown.
 -- Look (card J, wave 3): the main window's style in small: title strip with a round status dot, trim line,
 -- the destination emblem next to the best request.
+
+-- luacheck: read globals GameTooltip
 
 local _, ns = ...
 
@@ -75,7 +78,7 @@ local function buildTitle(box)
   W.gradient(strip, C.TITLE_TOP, C.TITLE_BOTTOM)
   B.line = W.hline(box, C.TRIM, -(TITLE_H + 1), 1, 1)
   local title = CreateFrame("Button", nil, box)
-  title:SetSize(140, 16)
+  title:SetSize(112, 16)
   title:SetPoint("TOPLEFT", box, "TOPLEFT", 6, -3)
   title:SetScript("OnClick", function() ns.UI.show("drive") end)
   B.dot = W.dot(title, 12, C.OK)
@@ -91,6 +94,11 @@ local function buildTitle(box)
   B.off = W.button(box, L["Off"], 34, 16, "ghost")
   B.off:SetPoint("RIGHT", B.hide, "LEFT", -3, 0)
   B.off:SetScript("OnClick", function() B.goOff() end)
+  B.map = W.button(box, L["Map"], 34, 16, "ghost")
+  B.map:SetPoint("RIGHT", B.off, "LEFT", -3, 0)
+  B.map:SetScript("OnClick", function() B.toggleMap() end)
+  B.map:SetScript("OnEnter", function(self) B.mapTooltip(self) end)
+  B.map:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 local function line(box, y, color)
@@ -180,10 +188,18 @@ local function countText(n)
   return L["%d open requests"]:format(n)
 end
 
+local function fieldStatus()
+  local F = ns.Field
+  return type(F) == "table" and type(F.status) == "function" and F.status() or {}
+end
+
 local function refreshContent(services)
   local db = boxDB() or {}
   local ride = activeRide()
-  B.titleText:SetText(db.locked and L["On duty (locked)"] or L["On duty"])
+  local field = fieldStatus()
+  local title = field.active and L["On the map"] or L["On duty"]
+  B.titleText:SetText(db.locked and L["%s (locked)"]:format(title) or title)
+  W.setToggle(B.map, field.on == true)
   B.dot:SetVertexColor(unpack((services.COME or services.PICK) and not ride and C.OK or C.WARN))
   local text, color = B.servicesText(services)
   B.services:SetText(text)
@@ -267,6 +283,29 @@ function B.goOff()
   B.refresh()
 end
 
+function B.toggleMap()
+  local F = ns.Field
+  if type(F) == "table" and type(F.setOn) == "function" then
+    F.setOn(not fieldStatus().on)
+  end
+  B.refresh()
+end
+
+-- Why the taxi is or is not on the map.
+function B.mapTooltip(owner)
+  local st = fieldStatus()
+  GameTooltip:SetOwner(owner, "ANCHOR_TOP")
+  GameTooltip:SetText(L["Taxi on the map"])
+  GameTooltip:AddLine(L["While levelling: riders near you who look for a ride see you on their map."], 1, 1, 1, true)
+  if st.active then
+    GameTooltip:AddLine(L["You are on the map."], unpack(C.OK))
+  elseif st.on then
+    local reasons = ns.Field.REASONS or {}
+    GameTooltip:AddLine(L[reasons[st.blocker] or "Not shown."], unpack(C.WARN))
+  end
+  GameTooltip:Show()
+end
+
 function B.hideByUser()
   local db = boxDB()
   if db then
@@ -298,7 +337,7 @@ end
 ns.commands.box = { fn = B.command, help = "duty box: lock or unlock it, or show it again after hiding" }
 
 for _, event in ipairs({ "READY", "PROFILE_CHANGED", "MARKET_CHANGED", "CHAT_REQUESTS_CHANGED", "RIDE_STARTED",
-  "RIDE_STATE" }) do
+  "RIDE_STATE", "FIELD_CHANGED" }) do
   ns.on(event, B.refresh)
 end
 ns.on("INCOMING_REQUEST", function()

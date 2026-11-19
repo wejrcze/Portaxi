@@ -22,8 +22,9 @@ local SAMPLES = {
   GONE = { type = "GONE", reqId = "Thalindra:4" },
   STATE = { type = "STATE", reqId = "Thalindra:4", state = "PORTAL_OPEN" },
   CANCEL = { type = "CANCEL", reqId = "Thalindra:4", by = "taxi", late = false },
+  SPOT = { type = "SPOT", inst = 1, n = -1275, w = 4350, busy = false },
 }
-local TYPES = { "HELLO", "BYE", "HAIL", "BOOK", "TAKE", "CONFIRM", "GONE", "STATE", "CANCEL" }
+local TYPES = { "HELLO", "BYE", "HAIL", "BOOK", "TAKE", "CONFIRM", "GONE", "STATE", "CANCEL", "SPOT" }
 
 local function copy(t)
   local out = {}
@@ -87,6 +88,7 @@ T.test("FIELDS lists every type in wire order", function()
   T.eq(P.FIELDS.GONE, { "reqId" })
   T.eq(P.FIELDS.STATE, { "reqId", "state" })
   T.eq(P.FIELDS.CANCEL, { "reqId", "by", "late" })
+  T.eq(P.FIELDS.SPOT, { "inst", "n", "w", "busy" })
   T.eq(P.FIELDS.VER, { "ver" })
   local n = 0
   for _ in pairs(P.FIELDS) do
@@ -158,6 +160,19 @@ T.test("decode: wrong or missing version -> version", function()
   T.eq(decodeErr("GONE|x|Thalindra:4"), "version")
   T.eq(decodeErr("GONE||Thalindra:4"), "version")
   T.eq(decodeErr("BYE|01"), "version")
+end)
+
+-- D19: the map position is a message of its own. A HELLO with one more field would be "format" for 0.1.0,
+-- which counts fields exactly; an unknown type is dropped quietly and everything else keeps working.
+T.test("SPOT: wire form, off-the-map marker, ranges", function()
+  T.eq(P.encode({ type = "SPOT", inst = 0, n = 150, w = -75, busy = true }), "SPOT|1|0|150|-75|1")
+  T.eq(P.decode("SPOT|1|-1|0|0|0"), { type = "SPOT", inst = -1, n = 0, w = 0, busy = false })
+  T.eq(decodeErr("SPOT|1|-2|0|0|0"), "range")
+  T.eq(decodeErr("SPOT|1|1|1000001|0|0"), "range")
+  T.eq(decodeErr("SPOT|1|1|0|1.5|0"), "field")
+  T.eq(decodeErr("SPOT|1|1|0|0"), "format")
+  T.eq(decodeErr("HELLO|1|Horde|MAGE|40|Orgrimmar|OG|PICK:15000|12|300|1"), "format",
+    "why SPOT is not a HELLO field")
 end)
 
 T.test("decode: unknown type -> type", function()

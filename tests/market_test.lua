@@ -331,6 +331,76 @@ end)
 
 -- affordable --------------------------------------------------------------------------------------
 
+-- Taxis on the map (D19) ----------------------------------------------------------------------
+
+local function spotMsg(inst, n, w, busy)
+  return { inst = inst, n = n, w = w, busy = busy or false }
+end
+
+local function rider(over)
+  local q = { faction = "Horde", dest = "UC", inst = 1, n = 0, w = 0 }
+  for k, v in pairs(over or {}) do
+    q[k] = v
+  end
+  return q
+end
+
+T.test("spot: kept apart from offers, counts once the HELLO is there; inst -1 removes it", function()
+  local m = Market.new()
+  T.eq(m:spot("Mage", spotMsg(1, 300, 400), 1000), true, "a SPOT before the first HELLO is kept")
+  T.eq(#m:nearby(rider(), 1000), 0, "but not shown without an offer")
+  m:hello("Mage", helloMsg(), 1001)
+  T.eq(#m:nearby(rider(), 1001), 1)
+  T.eq(m.spotByKey.Mage, { inst = 1, n = 300, w = 400, busy = false, at = 1000 })
+  T.eq(m:spot("Mage", spotMsg(-1, 0, 0), 1020), true)
+  T.eq(m.spotByKey.Mage, nil)
+  T.eq(m:spot("Mage", spotMsg(-1, 0, 0), 1021), false, "nothing left to remove")
+  T.eq(m.offerByKey.Mage ~= nil, true, "the offer stays: the taxi is back in town")
+end)
+
+T.test("nearby: same instance, in range, PICK for the city and faction, nearest first, with yards", function()
+  local m = Market.new()
+  local R = Const.FIELD.RANGE
+  m:hello("Far", helloMsg(), 0)
+  m:spot("Far", spotMsg(1, 0, R + 1), 0)
+  m:hello("Near", helloMsg(), 0)
+  m:spot("Near", spotMsg(1, 300, 400, true), 0)
+  m:hello("Edge", helloMsg(), 0)
+  m:spot("Edge", spotMsg(1, R, 0), 0)
+  m:hello("Other", helloMsg(), 0)
+  m:spot("Other", spotMsg(0, 10, 10), 0)
+  m:hello("NoUC", helloMsg({ dests = { "OG" } }), 0)
+  m:spot("NoUC", spotMsg(1, 10, 10), 0)
+  m:hello("ComeOnly", helloMsg({ ask = { COME = 30000 } }), 0)
+  m:spot("ComeOnly", spotMsg(1, 10, 10), 0)
+  m:hello("Ally", helloMsg({ fac = "Alliance" }), 0)
+  m:spot("Ally", spotMsg(1, 10, 10), 0)
+  m:hello("NoSpot", helloMsg(), 0)
+  local list = m:nearby(rider(), 5)
+  T.eq(keysOf(list), { "Near", "Edge" })
+  T.eq(list[1].yards, 500)
+  T.eq(list[1].busy, true)
+  T.eq({ list[1].svc, list[1].price }, { "PICK", 15000 })
+  T.eq(list[2].yards, R, "the range itself counts")
+  T.eq(keysOf(m:nearby(rider({ exclude = "Near" }), 5)), { "Edge" }, "own key left out")
+end)
+
+T.test("a spot lives T.SPOT_TTL without a new SPOT; expire drops it but keeps the offer", function()
+  local m = Market.new()
+  local ttl = Const.T.SPOT_TTL
+  m:hello("Mage", helloMsg(), 0)
+  m:spot("Mage", spotMsg(1, 10, 10), 0)
+  T.eq(#m:nearby(rider(), ttl - 1), 1)
+  T.eq(#m:nearby(rider(), ttl), 0, "stale without expire()")
+  m:hello("Mage", helloMsg(), ttl)
+  m:expire(ttl)
+  T.eq(m.offerByKey.Mage ~= nil, true)
+  T.eq(m.spotByKey.Mage, nil)
+  m:spot("Mage", spotMsg(1, 10, 10), ttl + 1)
+  m:bye("Mage")
+  T.eq(#m:nearby(rider(), ttl + 2), 0, "bye takes the spot with the offer")
+end)
+
 T.test("affordable: money >= price", function()
   T.eq(Market.affordable(30000, 30000), true)
   T.eq(Market.affordable(30001, 30000), true)

@@ -6,7 +6,8 @@
 --   Dispatch.setOnDuty(on)            taxi duty: HELLO now, every T.HELLO +- T.HELLO_JITTER, after PROFILE_CHANGED
 --   Dispatch.hail(dest, max)          rider: -> true | nil, err ("dest" "here" "profile" "busy" "group" "money"
 --                                     "cooldown" or Net's)
---   Dispatch.book(key, dest, svc)     rider, Browse: -> true | nil, err (also "offer" "resting")
+--   Dispatch.book(key, dest, svc, eta) rider, Browse or the map: -> true | nil, err (also "offer" "resting");
+--                                     eta (optional, D19) = the rider's own estimate, used for the ride
 --   Dispatch.cancel()                 rider: withdraws the open hail or booking (GONE)
 --   Dispatch.take(reqId)              taxi: -> true | nil, err ("duty" "busy" "pending" "request" or Net's)
 --   Dispatch.status()                 { onDuty, hail, pendingTake, last }
@@ -15,6 +16,8 @@
 -- (bookings are not in the Market), Dispatch.eta(svc) / Dispatch.wait(). MARKET_CHANGED also fires when
 -- duty, the open hail, or the pending TAKE change, so the UI has one event to redraw on.
 -- The addon never casts, uses items or trades here (D10); a confirmed match goes to ns.Ride.start.
+-- Taxi on the map (D19): SPOT feeds market:spot; while ns.Field.active() the taxi's list (and its alerts) has
+-- only the bookings addressed to it, no hails from anywhere.
 -- luacheck: read globals time
 
 local _, ns = ...
@@ -267,7 +270,13 @@ local function bookingValid(entry, services, t)
     and t - entry.request.at < C.T.REQUEST
 end
 
--- Requests this taxi can serve: bookings addressed to it first (oldest first), then the Market's.
+local function onTheMap()
+  local F = ns.Field
+  return type(F) == "table" and type(F.active) == "function" and F.active()
+end
+
+-- Requests this taxi can serve: bookings addressed to it first (oldest first), then the Market's (not while
+-- the taxi is on the map: a hail from a town is too far to walk).
 function Dispatch.requests()
   local info = taxiInfo()
   if not info.faction then
@@ -286,6 +295,9 @@ function Dispatch.requests()
     end
     return a.request.reqId < b.request.reqId
   end)
+  if onTheMap() then
+    return list
+  end
   for _, entry in ipairs(Dispatch.market:openRequests(info, t)) do
     entry.booked = false
     list[#list + 1] = entry
@@ -473,7 +485,7 @@ local function onTake(msg, key, raw)
   if not (h and h.reqId == msg.reqId) then
     return
   end
-  local take = { key = key, raw = raw, svc = msg.svc, price = msg.price, eta = msg.eta, wait = msg.wait }
+  local take = { key = key, raw = raw, svc = msg.svc, price = msg.price, eta = h.eta or msg.eta, wait = msg.wait }
   if h.booked then
     if key == h.booked and msg.svc == h.svc and msg.price <= h.max then
       confirm(take)
@@ -553,8 +565,8 @@ function Dispatch.hail(dest, max)
   return true
 end
 
--- Rider, Browse: books one taxi's offer; that taxi's TAKE is confirmed at once.
-function Dispatch.book(key, dest, svc)
+-- Rider, Browse or the map: books one taxi's offer; that taxi's TAKE is confirmed at once.
+function Dispatch.book(key, dest, svc, eta)
   local profile = current()
   local offer
   for _, o in ipairs(Dispatch.market:offers({ dest = dest, svc = svc, faction = profile and profile.faction })) do
@@ -578,7 +590,8 @@ function Dispatch.book(key, dest, svc)
   if not ok then
     return nil, nerr
   end
-  openHail({ reqId = reqId, dest = dest, max = offer.price, svcs = { svc }, svc = svc, booked = key })
+  openHail({ reqId = reqId, dest = dest, max = offer.price, svcs = { svc }, svc = svc, booked = key,
+    eta = tonumber(eta) and math.max(0, math.floor(eta)) or nil })
   return true
 end
 
@@ -670,6 +683,11 @@ local HANDLERS = {
   BOOK = onBook,
   TAKE = onTake,
   CONFIRM = onConfirm,
+  SPOT = function(msg, key)
+    if Dispatch.market:spot(key, msg, now()) then
+      changed()
+    end
+  end,
 }
 
 local function onNetMsg(msg, key, raw)

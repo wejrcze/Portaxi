@@ -48,6 +48,17 @@ ns.Const = {
     HELLO_JITTER = 10,  -- +- random jitter on the HELLO period
     HAIL_COOLDOWN = 10, -- max one HAIL per player per this many seconds
     DEBOUNCE = 2,       -- profile change debounce
+    SPOT = 30,          -- SPOT period while a taxi is on the map (D19)
+    SPOT_JITTER = 5,    -- +- random jitter on the SPOT period
+    SPOT_CHECK = 5,     -- the taxi checks its own grid cell this often
+    SPOT_GAP = 10,      -- at most one SPOT per this many seconds after a cell change
+    SPOT_TTL = 90,      -- a rider drops a SPOT not repeated for this long
+  },
+  -- Taxi on the map (D19, docs/FIELD_TAXI_PLAN.md). Yards and yards per second.
+  FIELD = {
+    GRID = 75,    -- positions are rounded to this grid before they leave the taxi's client
+    RANGE = 1500, -- riders see taxis on the map up to this far
+    SPEED = 7,    -- running speed without a mount, for the rider's ETA
   },
   HAIL_TIE = 15,  -- seconds of ETA counted as a tie
   ETA_PICK = 600, -- MVP estimate for a portal pickup walk, seconds
