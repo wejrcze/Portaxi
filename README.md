@@ -6,7 +6,7 @@ There is no server and no website. Every player's Portaxi talks to the others ov
 (`PortaxiNet`): taxis announce what they offer, riders send requests, and the two addons agree on a ride
 between themselves.
 
-> Status: MVP, version `0.1.0`. Mages only for now; warlock summons come later.
+> Status: MVP, version `0.2.0`. Mages only for now; warlock summons come later.
 
 ## Requirements
 

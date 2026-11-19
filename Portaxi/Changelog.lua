@@ -6,6 +6,19 @@ local _, ns = ...
 
 ns.Changelog = {
   {
+    version = "0.2.0",
+    date = "2026-11-19",
+    items = {
+      "During a ride, a small arrow points to the other player with their name and distance. "
+        .. "Drag it to move it, right-click hides it; /ptx arrow turns it off.",
+      "Ride: Browse also lists mages who advertise portals in public chat without Portaxi. "
+        .. "Invite asks them for your city with one click, Where? finds them with /who.",
+      "Drive: switch on Map in the duty box (or /ptx field) while levelling. "
+        .. "Riders out in the world near you then see you on their world map and can book a pickup.",
+      "Ride: out in the world, taxis near you come first in Browse with the distance, and as pins on your world map.",
+    },
+  },
+  {
     version = "0.1.0",
     date = "2026-11-19",
     items = {

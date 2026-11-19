@@ -3,7 +3,7 @@
 
 local ADDON, ns = ...
 ns.ADDON = ADDON
-ns.VERSION = "0.1.0"
+ns.VERSION = "0.2.0"
 
 function ns.say(msg)
   print("|cffffd100Portaxi|r " .. tostring(msg))
