@@ -31,5 +31,6 @@ UI/Alerts.lua
 UI/RideTab.lua
 UI/DriveTab.lua
 UI/RidePanel.lua
+UI/Arrow.lua
 UI/DutyBox.lua
 UI/WhatsNew.lua

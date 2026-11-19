@@ -162,6 +162,15 @@ L["Accept"] = "Accept"
 L["Open trade"] = "Open trade"
 L["Teleport to %s"] = "Teleport to %s"
 
+-- Ride arrow (UI/Arrow.lua) --------------------------------------------------------------------------
+L["Here"] = "Here"
+L["%d yd"] = "%d yd"
+L["Not on your continent"] = "Not on your continent"
+L["Arrow hidden for this ride. /ptx arrow turns it off for good."] =
+  "Arrow hidden for this ride. /ptx arrow turns it off for good."
+L["Ride arrow off."] = "Ride arrow off."
+L["Ride arrow on."] = "Ride arrow on."
+
 -- Version notice and What's new (Core/Version.lua, UI/WhatsNew.lua) -----------------------------------
 L["Version %s is available (you have %s). Update Portaxi to get it."] =
   "Version %s is available (you have %s). Update Portaxi to get it."

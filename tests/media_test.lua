@@ -5,7 +5,7 @@ local Wow = dofile("tests/lib/wowstub.lua")
 
 local MEDIA = "Portaxi/Media/"
 local CITIES = { "OG", "UC", "TB", "SW", "IF", "DN" }
-local EXTRA = { "ring", "glow", "portal" }
+local EXTRA = { "ring", "glow", "portal", "arrow" }
 local SIZE = 64
 local FILE_SIZE = 18 + SIZE * SIZE * 4
 
@@ -75,6 +75,10 @@ T.test("the ring, glow and portal textures exist with the same format", function
   end
   T.eq(alpha(checkTga("ring"), 32, 32), 0, "the ring is hollow")
   T.eq(alpha(checkTga("ring"), 32, 1), 255, "the ring is solid at the edge")
+  local arrow = checkTga("arrow")
+  T.eq(alpha(arrow, 32, 20), 255, "the arrow is solid in the middle")
+  T.eq(alpha(arrow, 32, 60), 0, "the arrow has a notch at the bottom")
+  T.eq(alpha(arrow, 2, 2), 0, "the arrow points up: top-left corner empty")
 end)
 
 T.test("the tiles, ride panel and minimap button use the Media paths", function()

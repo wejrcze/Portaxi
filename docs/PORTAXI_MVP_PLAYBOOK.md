@@ -346,6 +346,13 @@ ns.UI.toggle() ; ns.UI.show(tab) ; ns.UI.hide()   -- tab: "ride" | "drive"
 --   a small "Off" button (Dispatch.setOnDuty(false)); clicking the title opens the window on Drive.
 --   Pulses on INCOMING_REQUEST (next to the raid warning). Hidden in pet battles/cinematics is not needed.
 --   ns.UI.DutyBox.refresh() ; /ptx box toggles its lock or shows it again after the user hid it.
+-- Arrow (after 0.1.0, user request): a floating arrow to the other side of the ride, for both roles, with the
+--   peer's first name and the distance in yards (green "Here" within 8 yd). Global "PortaxiArrow", drag to move,
+--   position in PortaxiDB.ui.arrow; right-click hides it for the ride, /ptx arrow toggles PortaxiDB.ui.arrowOff.
+--   Shown while the peer's party unit is known and the ride is GROUPED..PORTAL_OPEN; COME only from ARRIVED.
+--   Positions: UnitPosition, else C_Map.GetBestMapForUnit + GetPlayerMapPosition + GetWorldPosFromMapPos
+--   (both units from the same source); rotation from GetPlayerFacing (no facing: distance only). No protocol
+--   message; a client without a position API shows nothing. ns.UI.Arrow.view() / .refresh() / .update().
 ```
 
 ---

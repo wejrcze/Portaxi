@@ -128,7 +128,7 @@ T.test("every module from the TOC exists in the namespace", function()
   for _, name in ipairs({ "Const", "Protocol", "Market", "Detect", "Net", "Dispatch", "Ride", "Trade", "Secure" }) do
     T.ok(type(ns[name]) == "table", name)
   end
-  for _, name in ipairs({ "Widgets", "MainFrame", "Minimap", "Alerts", "RideTab", "DriveTab", "RidePanel" }) do
+  for _, name in ipairs({ "Widgets", "MainFrame", "Minimap", "Alerts", "RideTab", "DriveTab", "RidePanel", "Arrow" }) do
     T.ok(type(ns.UI[name]) == "table", "UI." .. name)
   end
   T.eq(ns.L["Hail a taxi"], "Hail a taxi")

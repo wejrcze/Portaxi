@@ -8,6 +8,7 @@
 //   ring.tga   white anti-aliased ring, tinted in game (emblem border)
 //   glow.tga   white soft disc, tinted in game (glow behind the selected emblem)
 //   portal.tga the arcane portal disc of the mock's minimap button
+//   arrow.tga  white arrowhead pointing up with a dark rim, tinted in game (the ride arrow, UI/Arrow.lua)
 // Every file: 64x64, 32-bit BGRA with alpha, uncompressed true-colour (TGA image type 2), bottom-left origin
 // (descriptor 0x08), no image ID, no footer: 18 + 64 * 64 * 4 = 16402 bytes. Output is deterministic.
 //
@@ -590,6 +591,34 @@ const portal = (x, y) => {
   return [c0[0] + (c1[0] - c0[0]) * t, c0[1] + (c1[1] - c0[1]) * t, c0[2] + (c1[2] - c0[2]) * t, 1];
 };
 
+// Arrow of the ride arrow: an arrowhead pointing up (towards the top row), white with a soft dark rim so it
+// reads on snow and on night grass alike. The right half is a little darker, a hint of a ridge.
+const ARROW = [[32, 4], [57, 56], [32, 44], [7, 56]];
+const RIM = 2.5;
+function segDist(px, py, [ax, ay], [bx, by]) {
+  const dx = bx - ax, dy = by - ay;
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+function insidePoly(px, py, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+const arrow = (x, y) => {
+  let edge = Infinity;
+  for (let i = 0; i < ARROW.length; i++) edge = Math.min(edge, segDist(x, y, ARROW[i], ARROW[(i + 1) % ARROW.length]));
+  if (insidePoly(x, y, ARROW)) {
+    if (edge < 1.5) return [0.1, 0.1, 0.1, 0.9]; // inner rim
+    const v = x > 32 ? 0.82 : 1;
+    return [v, v, v, 1];
+  }
+  return edge < RIM ? [0, 0, 0, 0.55 * (1 - edge / RIM)] : [0, 0, 0, 0];
+};
+
 // ---------------------------------------------------------------------------------------------
 // Main
 
@@ -605,3 +634,4 @@ for (const key of KEYS) write("emblem_" + key, clipCircle(renderSvg(emblems[key]
 write("ring", proceduralLayer(ring));
 write("glow", proceduralLayer(glow));
 write("portal", proceduralLayer(portal));
+write("arrow", proceduralLayer(arrow));
