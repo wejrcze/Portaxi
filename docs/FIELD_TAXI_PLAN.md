@@ -68,15 +68,24 @@ zůstane funkční.
 
 **2026-11-19 (`/ptx diag`, 0.2.0, mág 42 v Rog'maru, Riverglades, mapId 2548):** všechna API z tabulky na klientu
 **existují** (`UnitPosition`, `C_Map.GetWorldPosFromMapPos`, `C_Map.GetMapPosFromWorldPos`, `CreateVector2D`,
-`IsInInstance`, `UnitAffectingCombat`, `WorldMapFrame.ScrollContainer.Child`). Co vracejí, diag nevidí: na to je
-`/ptx where` (uloží `PortaxiDB.where`), spustit venku mimo hospodu.
+`IsInInstance`, `UnitAffectingCombat`, `WorldMapFrame.ScrollContainer.Child`).
 
-| # | Co | Když to nejde |
+**2026-11-19 19:41 (`/ptx where`, Durotar, mapId 1411, mimo hospodu, *Map* zapnuté):**
+
+| Zdroj | Výsledek |
+|---|---|
+| `UnitPosition("player")` | `1368.30, -4373.40, 0, 1` (n, w, –, instance 1 = Kalimdor) |
+| `C_Map.GetPlayerMapPosition` → `GetWorldPosFromMapPos` | mapa `0.45597, 0.12484` → svět `1, 1368.27, -4373.42` |
+| `GetMapPosFromWorldPos(1, (n, w), 1411)` | `1411, 0.45596, 0.12483` (zpět na tutéž mapu) |
+| Field | na mapě, poslaný `SPOT` `1, 1350, -4350, busy 0` |
+
+| # | Co | Stav |
 |---|---|---|
-| F1 | `UnitPosition("player")` mimo instanci, nebo `C_Map.GetWorldPosFromMapPos` (stejné jako šipka). | Mág se na mapu nedostane; DutyBox řekne proč. |
-| F2 | `C_Map.GetMapPosFromWorldPos` a canvas `WorldMapFrame.ScrollContainer.Child` na Forever. | Bez pinů; zbývá seznam v Browse. |
-| F3 | Číslování kontinentů z `UnitPosition` a z `GetWorldPosFromMapPos` je stejné (ID instance). | Porovnávat jen stejné zdroje. |
-| F4 | Taint: rámce na canvasu mapy (stejně to dělají jiné addony). | Piny vypnout. |
+| F1 | Vlastní poloha mimo instanci. | **Ověřeno:** `UnitPosition` funguje (záloha přes C_Map taky). |
+| F2 | Převod světové polohy na mapu pro piny. | **API ověřeno** (cesta tam a zpět sedí na 0,0001). Vykreslení pinů na canvasu zbývá: piny vidí jen jiný hráč. |
+| F3 | Stejné číslování a souřadnice z `UnitPosition` a z `C_Map`. | **Ověřeno:** obě dávají instanci 1, rozdíl polohy pod 0,05 yardu. |
+| F4 | Taint: rámce na canvasu mapy. | Neověřeno, chce druhého hráče. |
+| — | Zaokrouhlení na mřížku 75 yd a `SPOT` | **Ověřeno:** 1368 / -4373 → 1350 / -4350. |
 
 Brána ve hře (dva hráči): mág venku zapne *Map*, zákazník venku ve stejné zóně zvolí město, vidí pin
 i řádek v Browse, klikne na pin, jízda doběhne s šipkou. Mág vejde do hospody → pin zmizí.
