@@ -10,7 +10,8 @@
 -- where the mage stands (or the start of the ad), the price they named, an Invite button, and a Where? button
 -- that asks /who while the place is unknown.
 -- Taxis on the map (D19) come first in Browse while the rider may see them (Field.nearby): a green stripe, the
--- distance and the walk instead of the zone, nearest first. Their Book sends the rider's own ETA along.
+-- distance and the walk instead of the zone, nearest first. Their Book sends the rider's own ETA along. While
+-- such rows are shown, the page redraws every NEAR_REFRESH s so the distance follows the walking rider.
 
 local _, ns = ...
 
@@ -31,6 +32,7 @@ local PAGE_W = 352 -- page width set by MainFrame
 local TILE_W, TILE_H, TILE_GAP = 112, 110, 8
 local ROWS, ROW_H = 5, 32
 local SERVICE_SHORT = { COME = "Come-to-you", PICK = "Pickup" }
+local NEAR_REFRESH = 2 -- seconds between redraws while Browse lists taxis on the map
 
 -- Vertical layout of the page (y offsets from the top; the page is 352 x 516).
 local Y = {
@@ -199,6 +201,11 @@ function R.build(page)
   buildHail(page, ui)
   buildBrowse(page, ui)
   buildStatus(page, ui)
+  C_Timer.NewTicker(NEAR_REFRESH, function()
+    if R.near and R.mode == "browse" and page:IsVisible() then
+      R.redraw()
+    end
+  end)
   return page
 end
 
@@ -511,6 +518,7 @@ local function refreshBrowse(ui, p, st)
       W.setEnabled(row.book, blocker == nil)
     end
   end
+  R.near = offers[1] ~= nil and offers[1].near == true -- taxis on the map come first
   local city = R.dest and ns.Const.CITY[R.dest]
   ui.browseEmpty:SetShown(#offers == 0)
   ui.browseEmpty:SetText(city and L["No taxi offers %s right now."]:format(L[city.name])

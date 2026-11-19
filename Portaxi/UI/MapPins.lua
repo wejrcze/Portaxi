@@ -148,12 +148,15 @@ local function onClick(pin)
   end
 end
 
+-- The area: a soft green fill with a clear edge, so it shows on the orange and brown of the map.
 local function newPin(parent)
   local ring = CreateFrame("Frame", nil, parent)
   ring.tex = ring:CreateTexture(nil, "ARTWORK")
   ring.tex:SetAllPoints()
   W.trySetTexture(ring.tex, W.MEDIA .. "glow")
-  ring.tex:SetVertexColor(COL.OK[1], COL.OK[2], COL.OK[3], 0.55)
+  ring.edge = ring:CreateTexture(nil, "OVERLAY")
+  ring.edge:SetAllPoints()
+  W.trySetTexture(ring.edge, W.MEDIA .. "ring")
   local pin = CreateFrame("Button", nil, parent)
   pin:SetSize(ICON, ICON)
   pin.icon = pin:CreateTexture(nil, "OVERLAY")
@@ -212,8 +215,10 @@ function P.refresh()
     pin:ClearAllPoints()
     pin:SetPoint("CENTER", child, "TOPLEFT", v.x * w / inv, -v.y * h / inv)
     pin:SetFrameLevel(level + 1)
+    local color = v.entry.busy and COL.MUTED or COL.OK
     pin.icon:SetDesaturated(v.entry.busy == true)
-    pin.ring.tex:SetAlpha(v.entry.busy and 0.25 or 0.55)
+    pin.ring.tex:SetVertexColor(color[1], color[2], color[3], v.entry.busy and 0.35 or 0.7)
+    pin.ring.edge:SetVertexColor(color[1], color[2], color[3], v.entry.busy and 0.6 or 1)
     pin:Show()
   end
   hideFrom(#list + 1)

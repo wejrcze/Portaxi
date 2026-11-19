@@ -301,4 +301,17 @@ T.test("/ptx mapself: the taxi sees its own pin and Browse row from its last SPO
   T.eq(#F.nearby("OG"), 0, "off again")
 end)
 
+T.test("Browse follows the walking rider: the distance updates within a few seconds without network news", function()
+  local sim, taxi, rider, pos = world()
+  mapOn(sim, taxi)
+  rider:slash("show")
+  local R = rider.ns.UI.RideTab
+  R.selectCity("OG")
+  R.setMode("browse")
+  T.eq(R.ui.rows[1].place:GetText(), "~473 yd · ~68 s on foot")
+  pos.Velvet = { 1050, 625 } -- walked to 100 yards south of the taxi's cell
+  sim:advance(3)
+  T.eq(R.ui.rows[1].place:GetText(), "~100 yd · ~14 s on foot")
+end)
+
 T.done()
