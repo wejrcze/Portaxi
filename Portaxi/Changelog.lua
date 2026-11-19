@@ -6,6 +6,20 @@ local _, ns = ...
 
 ns.Changelog = {
   {
+    version = "0.3.0",
+    date = "2026-11-19",
+    items = {
+      "Inn hop: a mage with a Scroll of Liminal Passage can hop to any inn or city where a host rests. "
+        .. "Open the Hop tab (/ptx hop), click Hop here, and the host accepts with one click.",
+      "Anyone can host mage travellers: switch on Hosting on the Ride tab while you rest. "
+        .. "It is free and off by default.",
+      "No host there? The Hop tab searches a town with an inn by /who and asks the players there for an invite.",
+      "Come-to-you: the taxi opens the trade only once the scroll really brought it to you. "
+        .. "If the scroll fails (the rider is not resting), the taxi can try again.",
+      "Taxis on the map: Browse keeps the distance current while you walk.",
+    },
+  },
+  {
     version = "0.2.0",
     date = "2026-11-19",
     items = {
