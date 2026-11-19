@@ -111,7 +111,7 @@ local function showTooltip(pin)
   GameTooltip:SetText(e.key)
   GameTooltip:AddLine(("%s %s · %s %s"):format(W.className(e.offer.cls), tostring(e.offer.lvl or ""), L[SERVICE],
     W.money(e.price)), 1, 1, 1)
-  GameTooltip:AddLine(L["~%d yd · ~%d s on foot"]:format(math.floor(e.yards + 0.5), e.eta), 1, 1, 1)
+  GameTooltip:AddLine(L["~%d yd · ~%d s on foot"]:format(math.floor(e.yards + 0.5), e.walk), 1, 1, 1)
   if e.self then
     GameTooltip:AddLine(L["This is you (test view)."], unpack(COL.MUTED))
   elseif e.busy then

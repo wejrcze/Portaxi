@@ -19,7 +19,9 @@
 -- Rider
 --   Field.riderBlocker(dest) -> nil | code   "dest" "profile" "resting" "ride" "instance" "position"
 --   Field.nearby(dest) -> list, blocker      Market:nearby around the rider (own faction, own key left out),
---                                            each entry with eta = Field.walk(yards, offer.resp)
+--                                            each entry with walk = Field.walk(yards) (what the rider reads:
+--                                            the walk alone) and eta = Field.walk(yards, offer.resp) (the ride's
+--                                            estimate: the taxi answers first, then the rider walks)
 --
 -- Test view (/ptx mapself, this session only): a taxi on the map also sees itself, built from its own last SPOT
 -- (the network never echoes it back), as an entry with self = true. It cannot be booked.
@@ -258,6 +260,7 @@ function Field.nearby(dest)
     end)
   end
   for _, e in ipairs(list) do
+    e.walk = Field.walk(e.yards)
     e.eta = Field.walk(e.yards, e.offer.resp)
   end
   return list

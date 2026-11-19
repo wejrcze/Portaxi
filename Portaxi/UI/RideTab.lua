@@ -426,7 +426,7 @@ end
 local function drawTaxi(row, o, blocker)
   row.who:SetText(("%s · %s"):format(o.key, L[SERVICE_SHORT[o.svc]]))
   if o.near then
-    row.place:SetText(L["~%d yd · ~%d s on foot"]:format(math.floor(o.yards + 0.5), o.eta))
+    row.place:SetText(L["~%d yd · ~%d s on foot"]:format(math.floor(o.yards + 0.5), o.walk))
   else
     row.place:SetText(o.offer and o.offer.place or "")
   end

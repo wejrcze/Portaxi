@@ -94,6 +94,7 @@ T.test("the rider sees the taxi once a city is chosen and not resting; nearest f
   T.eq({ e.key, e.svc, e.price }, { "Thalindra Forever", "PICK", 15000 })
   T.ok(math.abs(e.yards - math.sqrt(260 * 260 + 395 * 395)) < 1e-6, "distance to the cell")
   T.eq(e.eta, F.walk(e.yards, sim.Const.RESP_DEFAULT))
+  T.eq(e.walk, 68, "the walk alone: 473 yards at 7 yards a second, no response time")
   setResting(sim, rider, true)
   T.eq({ F.nearby("OG") }, { {}, "resting" }, "a resting rider gets the town taxi")
 end)
@@ -109,7 +110,7 @@ T.test("Browse puts the taxi on the map first, with the distance, and books with
   T.ok(row:IsShown())
   T.eq(row.offer.near, true)
   T.ok(row.stripe:IsShown(), "green stripe")
-  T.ok(row.place:GetText():find("^~473 yd · ~%d+ s on foot$"), row.place:GetText())
+  T.eq(row.place:GetText(), "~473 yd · ~68 s on foot")
   T.ok(not R.ui.rows[2]:IsShown(), "the same taxi is not listed twice")
   local eta = row.offer.eta
   row.book:Click()
