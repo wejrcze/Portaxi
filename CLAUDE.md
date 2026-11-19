@@ -9,6 +9,8 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
 - `docs/PORTAXI_MVP_PLAN.md` — MVP plan: scope, phase 0 checks, architecture, protocol, steps.
 - `docs/PORTAXI_MVP_PLAYBOOK.md` — how the MVP is built: waves of parallel agents, architect decisions (D1–D15),
   module contracts, file ownership, test simulator, in-game gates. Contracts there change only through the architect.
+- `docs/INN_HOP_PLAN.md` — plan of the Inn hop feature (a mage scrolls to a resting host at any inn or capital);
+  decisions R1–R5 confirmed; next step is the in-game phase 0 in its §3.
 - `docs/mock/portaxi.html` — clickable UX mock (open it in a browser).
 - `CLAUDE.local.md` (git-ignored, optional) — machine-specific notes: the game path, published mock link.
 - `tools/` — dev scripts (`link-addon.ps1`, `check.ps1`, `setup-tools.ps1`, `package.ps1` builds `dist/ForeverPortaxi-<version>.zip` for CurseForge).
