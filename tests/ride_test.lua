@@ -992,4 +992,86 @@ T.test("/ptx ride prints the ride and cancels", function()
   noErrors(wow)
 end)
 
+-- Inn hop (D20): svc HOP ------------------------------------------------------------------------------
+
+local function hopMatch(role, extra)
+  local m = { reqId = "Thalindra:h1", role = role, svc = "HOP", price = 0, dest = nil,
+              peer = { key = role == "taxi" and "Velvet" or "Thalindra",
+                       raw = role == "taxi" and "Velvet Forever" or "Thalindra Forever" }, eta = 1 }
+  for k, v in pairs(extra or {}) do
+    m[k] = v
+  end
+  return m
+end
+
+T.test("HOP: dest may be nil or a city; COME and PICK still need a city", function()
+  T.ok(R.new(hopMatch("taxi"), 0))
+  T.ok(R.new(hopMatch("taxi", { dest = "OG" }), 0))
+  T.eq({ R.new(hopMatch("taxi", { dest = "XX" }), 0) }, { nil, "match" })
+  local m = match("taxi")
+  m.dest = nil
+  T.eq({ R.new(m, 0) }, { nil, "match" })
+end)
+
+T.test("taxi HOP: scroll armed when both rest, cast, LANDED -> DONE led by the taxi; no trade, no LAST_RIDE", function()
+  local ride, acts = R.new(hopMatch("taxi"), 0)
+  T.eq(names(acts), { "INVITE" })
+  ride = R.step(ride, ev("RESTING", { resting = true }), 1)
+  ride, acts = R.step(ride, ROSTER, 2)
+  T.eq(ride.state, "GROUPED")
+  ride, acts = R.step(ride, ev("PEER_STATE", { state = "RESTING" }), 3)
+  T.eq(names(acts), { "SECURE:item:party1" })
+  ride, acts = R.step(ride, cast("self", "SCROLL", "START", "g1"), 4)
+  T.eq(ride.state, "EN_ROUTE")
+  ride, acts = R.step(ride, cast("self", "SCROLL", "SUCCEEDED", "g1"), 5)
+  T.eq(ride.state, "EN_ROUTE")
+  ride, acts = R.step(ride, ev("LANDED"), 5.2)
+  T.eq(ride.state, "DONE")
+  T.eq(names(acts), { "SEND:ARRIVED", "SEND:DONE", "SECURE:nil", "END" })
+  T.ok(not has(acts, "TRADE_OPEN") and not has(acts, "LAST_RIDE"))
+end)
+
+T.test("taxi HOP: Invalid target goes back to GROUPED like Come-to-you", function()
+  local ride = R.new(hopMatch("taxi"), 0)
+  ride = run(ride, { { ev("RESTING", { resting = true }), 1 }, { ROSTER, 2 },
+    { ev("PEER_STATE", { state = "RESTING" }), 3 }, { cast("self", "SCROLL", "START", "g1"), 4 },
+    { cast("self", "SCROLL", "SUCCEEDED", "g1"), 5 } })
+  local back = R.step(ride, ev("SCROLL_ERROR", { message = "Invalid target" }), 5.1)
+  T.eq(back.state, "GROUPED")
+end)
+
+T.test("rider HOP (the host): accepts only the mage's invite, follows ARRIVED and DONE; a cancel is never late", function()
+  local ride, acts = R.new(hopMatch("rider"), 0)
+  T.eq(names(select(2, R.step(ride, ev("INVITE", { from = "Stranger" }), 1))), {})
+  ride, acts = R.step(ride, ev("INVITE", { from = "Thalindra" }), 1)
+  T.eq(names(acts), { "ACCEPT" })
+  ride = R.step(R.step(ride, ev("RESTING", { resting = true }), 1), ROSTER, 2)
+  ride = R.step(ride, cast("peer", "SCROLL", "START", "g1"), 3)
+  T.eq(ride.state, "EN_ROUTE")
+  local ok, late = R.canCancel(ride)
+  T.eq({ ok, late }, { true, false }, "no scroll cost for the host")
+  ride = R.step(ride, ev("PEER_STATE", { state = "ARRIVED" }), 4)
+  T.eq(ride.state, "ARRIVED")
+  ride, acts = R.step(ride, ev("PEER_STATE", { state = "DONE" }), 4.1)
+  T.eq(ride.state, "DONE")
+  T.eq(names(acts), { "SECURE:nil", "END" }, "the host sends nothing back")
+end)
+
+T.test("HOP with a host without Portaxi: counted as resting, scroll armed once grouped; glue sends no STATE", function()
+  local ride = R.new(hopMatch("taxi", { peer = { key = "Velvet", raw = "Velvet Forever", noAddon = true } }), 0)
+  T.eq(ride.riderResting, true)
+  T.eq(ride.peer.noAddon, true)
+  ride = R.step(ride, ev("RESTING", { resting = true }), 1)
+  local _, acts = R.step(ride, ROSTER, 2)
+  T.ok(has(acts, "SECURE:item:party1"), "armed without the host's STATE")
+
+  local wow = client()
+  wow.ns.Ride.start(hopMatch("taxi", { peer = { key = "Velvet", raw = "Velvet Forever", noAddon = true } }))
+  wow:joinParty("Velvet", { faction = "Horde" })
+  wow:advance(2)
+  T.eq(wow.ns.Ride.current().state, "GROUPED")
+  T.eq(#stateMsgs(wow, "Velvet Forever"), 0, "no addon message to a player without Portaxi")
+  noErrors(wow)
+end)
+
 T.done()

@@ -22,6 +22,7 @@ Core/ChatParse.lua
 Core/ChatReq.lua
 Core/ChatOffers.lua
 Core/Who.lua
+Core/Hop.lua
 Core/Ride.lua
 Core/Trade.lua
 Core/Secure.lua

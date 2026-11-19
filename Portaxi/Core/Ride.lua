@@ -74,6 +74,10 @@
 -- The rider sends STATE "RESTING" / "NOT_RESTING" at start, when grouped and on every change.
 -- A side follows only forward moves (by state order) and the two reverts above; anything else is ignored.
 --
+-- Inn hop (D20), svc "HOP": the mage is the taxi (invites, casts the scroll on the host), the host is the rider. The
+-- same steps as COME up to ARRIVED (LANDED proof included), then the taxi leads DONE at once: no trade, no portal,
+-- price 0, dest = the host's city key or nil, never late, no LAST_RIDE. peer.noAddon (a /who host without Portaxi):
+-- no STATE is sent and the host counts as resting.
 -- Cancel rules: the rider cancels free before EN_ROUTE; a Come-to-you cancel in EN_ROUTE, ARRIVED or TRADING is
 -- late (the scroll is spent; recorded in PortaxiCharDB.lateCancels); a pickup cancel is never late; after PAID it is
 -- free again (the taxi is paid). The taxi cancels before EN_ROUTE, while waiting for a pickup rider (PICK EN_ROUTE)
@@ -132,11 +136,18 @@ local function emit(acts, action)
   acts[#acts + 1] = action
 end
 
+local SCROLL_SVC = { COME = true, HOP = true } -- services that move the taxi with the scroll
+
 local function validMatch(m)
-  return type(m) == "table" and type(m.reqId) == "string" and m.reqId ~= ""
-    and (m.role == "rider" or m.role == "taxi") and (m.svc == "COME" or m.svc == "PICK")
-    and type(m.price) == "number" and C.CITY[m.dest] ~= nil
-    and type(m.peer) == "table" and type(m.peer.key) == "string" and type(m.peer.raw) == "string"
+  if not (type(m) == "table" and type(m.reqId) == "string" and m.reqId ~= "" and (m.role == "rider" or m.role == "taxi")
+      and type(m.price) == "number" and type(m.peer) == "table" and type(m.peer.key) == "string"
+      and type(m.peer.raw) == "string") then
+    return false
+  end
+  if m.svc == "HOP" then
+    return m.dest == nil or C.CITY[m.dest] ~= nil
+  end
+  return (m.svc == "COME" or m.svc == "PICK") and C.CITY[m.dest] ~= nil
 end
 
 function Ride.new(match, now)
@@ -144,7 +155,10 @@ function Ride.new(match, now)
     return nil, "match"
   end
   local ride = copy(match)
-  ride.peer = { key = match.peer.key, raw = match.peer.raw }
+  ride.peer = { key = match.peer.key, raw = match.peer.raw, noAddon = match.peer.noAddon == true or nil }
+  if ride.peer.noAddon then
+    ride.riderResting = true -- a host without Portaxi cannot tell; the scroll's error tells instead
+  end
   ride.state, ride.since, ride.startedAt = "MATCHED", now, now
   ride.late = false
   ride.armedKey = "none"
@@ -173,7 +187,7 @@ function Ride.canCancel(ride)
     end
     return nil, "too_late"
   end
-  -- Only a Come-to-you cancel after the scroll costs the taxi something (late); a pickup cancel never does.
+  -- Only a Come-to-you cancel after the scroll costs the taxi something (late); a pickup or a hop cancel never does.
   return true, ride.svc == "COME" and rank < RANK.PAID
 end
 
@@ -182,7 +196,7 @@ local function specFor(r)
   if r.role ~= "taxi" then
     return nil
   end
-  if r.svc == "COME" and r.state == "GROUPED" and r.riderResting == true and r.selfResting ~= false
+  if SCROLL_SVC[r.svc] and r.state == "GROUPED" and r.riderResting == true and r.selfResting ~= false
       and r.peerUnit then
     return { kind = "item", item = C.ITEM.LIMINAL_SCROLL, unit = r.peerUnit,
              label = L["Teleport to %s"]:format(r.peer.key) }
@@ -211,7 +225,8 @@ local function go(r, acts, state, now, followed)
   r.state, r.since = state, now
   if not followed then
     local revert = state == "GROUPED" and prev == "EN_ROUTE" and r.role == "taxi"
-    if LEADS[r.role][state] or revert then
+    local hopDone = r.svc == "HOP" and r.role == "taxi" and state == "DONE"
+    if LEADS[r.role][state] or revert or hopDone then
       emit(acts, { type = "SEND", state = state })
     end
   end
@@ -225,7 +240,7 @@ local function go(r, acts, state, now, followed)
   if ENDED[state] then
     emit(acts, { type = "SECURE", spec = nil })
     r.armedKey = "none"
-    if state == "DONE" and r.role == "taxi" then
+    if state == "DONE" and r.role == "taxi" and r.svc ~= "HOP" then
       emit(acts, { type = "LAST_RIDE" })
     end
     emit(acts, { type = "END" })
@@ -332,7 +347,7 @@ function H.RESTING(r, e, _, acts)
 end
 
 local function castScroll(r, e, now, acts)
-  if r.svc ~= "COME" then
+  if not SCROLL_SVC[r.svc] then
     return
   end
   if e.phase == "START" then
@@ -379,14 +394,14 @@ function H.NEAR(r, _, now, acts)
 end
 
 function H.LANDED(r, _, now, acts)
-  if r.role == "taxi" and r.svc == "COME" and r.state == "EN_ROUTE" and r.landing then
+  if r.role == "taxi" and SCROLL_SVC[r.svc] and r.state == "EN_ROUTE" and r.landing then
     r.scrollError = nil
     go(r, acts, "ARRIVED", now)
   end
 end
 
 function H.SCROLL_ERROR(r, e, now, acts)
-  if r.role == "taxi" and r.svc == "COME" and r.state == "EN_ROUTE" and r.landing then
+  if r.role == "taxi" and SCROLL_SVC[r.svc] and r.state == "EN_ROUTE" and r.landing then
     r.scrollError = e.message or "error"
     go(r, acts, "GROUPED", now) -- the revert is sent; the rider follows and the scroll is armed again
   end
@@ -414,7 +429,8 @@ function H.PEER_STATE(r, e, now, acts)
     end
     return
   end
-  if not FOLLOWS[r.role][state] then
+  local hopDone = r.svc == "HOP" and r.role == "rider" and state == "DONE"
+  if not FOLLOWS[r.role][state] and not hopDone then
     return
   end
   if state == "FAILED" then
@@ -453,8 +469,12 @@ local function settle(r, now, acts)
     go(r, acts, "EN_ROUTE", now)
   end
   if r.role == "taxi" and r.state == "ARRIVED" then
-    go(r, acts, "TRADING", now)
-    emit(acts, { type = "TRADE_OPEN" })
+    if r.svc == "HOP" then
+      go(r, acts, "DONE", now) -- the hop is the whole ride
+    else
+      go(r, acts, "TRADING", now)
+      emit(acts, { type = "TRADE_OPEN" })
+    end
   end
   if Ride.isOver(r) then
     return
@@ -598,11 +618,15 @@ end
 local EXEC = {}
 
 function EXEC.SEND(r, a)
-  whisper(r, { type = "STATE", reqId = r.reqId, state = a.state })
+  if not r.peer.noAddon then
+    whisper(r, { type = "STATE", reqId = r.reqId, state = a.state })
+  end
 end
 
 function EXEC.CANCEL_MSG(r, a)
-  whisper(r, { type = "CANCEL", reqId = r.reqId, by = r.role, late = a.late })
+  if not r.peer.noAddon then
+    whisper(r, { type = "CANCEL", reqId = r.reqId, by = r.role, late = a.late })
+  end
 end
 
 function EXEC.INVITE(r)
@@ -752,7 +776,8 @@ local function spellKind(spellId)
   if C.SPELL.LIMINAL_PASSAGE and spellId == C.SPELL.LIMINAL_PASSAGE then
     return "SCROLL"
   end
-  if active and spellId == C.CITY[active.dest].spell then
+  local city = active and C.CITY[active.dest or ""]
+  if city and spellId == city.spell then
     return "PORTAL"
   end
 end
@@ -776,7 +801,7 @@ end
 
 local function checkLanded()
   local r = active
-  if not (r and r.role == "taxi" and r.svc == "COME" and r.landing) then
+  if not (r and r.role == "taxi" and SCROLL_SVC[r.svc] and r.landing) then
     return
   end
   local n = scrollCount()
@@ -1013,7 +1038,7 @@ local function rideCommand(args)
     ns.say("no active ride")
     return
   end
-  ns.say(("ride %s · %s %s to %s · %s with %s · unit %s · since %ds"):format(r.reqId, r.role, r.svc, r.dest,
+  ns.say(("ride %s · %s %s to %s · %s with %s · unit %s · since %ds"):format(r.reqId, r.role, r.svc, tostring(r.dest),
     r.state, r.peer.key, tostring(r.peerUnit), math.floor(ns.now() - r.since)))
 end
 

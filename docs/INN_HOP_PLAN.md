@@ -113,7 +113,7 @@ bez `|` a `,` (pravidlo z Protocol), délka zprávy ≤ 255 B i s dlouhým názv
 | `Protocol` (čistý) | Pět nových typů z §5, testy kódování a rozsahů. |
 | `Detect` | `profile.placeKind = "city"` (zóna = `Const.CITY[*].name`) / `"inn"` (odpočívá jinde) / `nil`; `services.HOP` = mág se svitkem, odpočívá, není v partě; `services.HOST` = odpočívá, má místo v partě. Pauzy `NO_SCROLL`, `NOT_RESTING`, `IN_GROUP`. |
 | `Market` (čistý) | `m:host(key, host, now)`, `m:unhost(key)`, expirace po `T.HOST`, `m:hosts({ faction, exclude })` → seznam míst (město / zóna + podzóna) s hostiteli, města první, pak abecedně. |
-| `Dispatch` | Ohlašování `HOST`/`UNHOST` podle `PortaxiCharDB.host` a `services.HOST`; `Dispatch.hop(hostKey)` (mág), `Dispatch.answerHop(reqId, ok)` (hostitel, z kliku); timeouty `T.HOP_ANSWER`, `T.HOP_RETRY`; po `HOPOK` `Ride.start` na obou stranách. Nové události `HOP_REQUEST` (hostitel), `HOP_RESULT` (mág), `HOSTS_CHANGED`. |
+| `Hop` (nový, `Core/Hop.lua`; původně v `Dispatch`) | Ohlašování `HOST`/`UNHOST` podle `PortaxiCharDB.host` a `services.HOST`; `Dispatch.hop(hostKey)` (mág), `Dispatch.answerHop(reqId, ok)` (hostitel, z kliku); timeouty `T.HOP_ANSWER`, `T.HOP_RETRY`; po `HOPOK` `Ride.start` na obou stranách. Nové události `HOP_REQUEST` (hostitel), `HOP_RESULT` (mág), `HOSTS_CHANGED`. |
 | `Ride` | Služba `HOP`: stejné kroky jako `COME` do `ARRIVED`, potom rovnou `DONE` (žádný `TRADING`/`PAID`/`PORTAL_OPEN`). Role: mág = `taxi` (zve, sesílá), hostitel = `rider` (přijímá pozvánku, hlásí odpočinek). U hopu přes `/who` jízda bez protistrany s addonem: `peer.noAddon = true`, bez `STATE`, svitek připravený bez kontroly odpočinku hostitele. Po `DONE` mág opustí partu. |
 | `Who` (nový, `Core/Who.lua`) | `Who.search(zone)` jen z kliku (`C_FriendList.SendWho`), výsledky z `WHO_LIST_UPDATE` (`C_FriendList.GetWhoInfo`), filtr vlastní frakce, cooldown podle H0.4; `Who.ask(name)` = whisper ze šablony + zapamatování „čekám pozvánku od X“ na `T.INVITE`. |
 | `Locales/enUS` | Texty UI, šablony šeptání EN a RU. |
@@ -144,7 +144,7 @@ kromě povinných kliků (Accept, tlačítko Portaxi). Záloha `/who` s hráčem
 | 1 | Fáze 0: sonda `/ptx who`, uživatel ověří H0.1–H0.5. | Tabulka §3 vyplněná; rozhodnutí v §9 potvrzená. **✓ 2026-11-19** (zbývá cooldown `/who`, hospody, kontinenty; neblokuje) |
 | 2 | Architekt: `Const`, kontrakty v playbooku (§5, §6), TOC s prázdnými `Who.lua` a `HopTab.lua`. | `check.ps1` zelený, klient po restartu načte addon. **✓ 2026-11-19** (D20 a „Inn hop (D20)“ v playbooku §2) |
 | 3 | Souběžně: `Protocol` + `Market` (čisté, testy); `Detect`; `Who`. | Testy zelené. **✓ 2026-11-19** bez `Who` (přesunut do kroku 4, potřebuje `Ride` s `noAddon`) |
-| 4 | `Dispatch` (HOST, HOP handshake) + `Ride` svc `HOP` + simulátor `sim_hop`. | Scénář hopu zelený v simulátoru. |
+| 4 | `Dispatch` (HOST, HOP handshake) + `Ride` svc `HOP` + simulátor `sim_hop`. | Scénář hopu zelený v simulátoru. **✓ 2026-11-19**: handshake ve vlastním `Core/Hop.lua` (ne v `Dispatch`), `Ride` svc `HOP`, `Core/Who.lua`; `sim_hop` (6), `who_test` (4), testy `HOP` v `ride_test` |
 | 5 | UI: záložka Hop, přepínač hostování, alert hostiteli, `RidePanel` pro `HOP`, texty. | `ui_smoke_test` zelený; ve hře okno bez chyb. |
 | 6 | Brána ve hře se dvěma hráči (§7), opravy. | Tři hopy po sobě + jeden přes `/who`. |
 | 7 | README, `docs/curseforge/description.md`, `Changelog.lua`, verze 0.2.0, `tools\release.ps1`. | Vydáno na CurseForge. |
