@@ -78,4 +78,63 @@ T.test("summon requests name the place", function()
   T.eq(P.parse("WTS summons, any place"), nil)
 end)
 
+-- Offers (D18) ---------------------------------------------------------------------------------------
+
+local function offer(text, want)
+  local got = P.offer(text)
+  want.prices = want.prices or {}
+  want.kind = want.kind or "port"
+  want.lang = want.lang or "en"
+  T.eq(got, want, text)
+end
+
+T.test("sellers' ads name cities and prices", function()
+  offer("Portals to Org/UC/TB, 3g each",
+    { dests = { "OG", "UC", "TB" }, prices = { OG = 30000, UC = 30000, TB = 30000 }, price = 30000 })
+  offer("WTS ports UC 50s, TB 1g", { dests = { "UC", "TB" }, prices = { UC = 5000, TB = 10000 }, price = 5000 })
+  offer("WTS ports 50s: Org UC", { dests = { "OG", "UC" }, prices = { OG = 5000, UC = 5000 }, price = 5000 })
+  offer("Selling portals Org UC TB", { dests = { "OG", "UC", "TB" } })
+  offer("LFW portals UC/TB/Org 75 silver",
+    { dests = { "UC", "TB", "OG" }, prices = { UC = 7500, TB = 7500, OG = 7500 }, price = 7500 })
+  offer("Need a port to Org? /w me", { dests = { "OG" } })
+  offer("port to org 50s pst", { dests = { "OG" }, prices = { OG = 5000 }, price = 5000 })
+end)
+
+T.test("price forms: decimals, gold and silver together, words, Russian units", function()
+  offer("WTS port 1.5g", { price = 15000 })
+  offer("wts portals 1g50s pst", { price = 15000 })
+  offer("WTS portals 1g 50s", { price = 15000 })
+  offer("WTS portals 2 gold", { price = 20000 })
+  offer("продаю порт в орг 50с", { dests = { "OG" }, prices = { OG = 5000 }, price = 5000, lang = "ru" })
+  offer("продаю порты 2з", { price = 20000, lang = "ru" })
+  offer("WTS ports, tips appreciated", { tip = true })
+  offer("lvl60s mage wts ports", {}) -- "60s" glued to a word is no price
+end)
+
+T.test("no city or all cities means any city; 'in Org' is where the mage stands", function()
+  offer("WTS portals to all cities 5g /w me", { price = 50000 })
+  offer("Порты во все столицы, пишите", { lang = "ru" })
+  offer("WTS ports UC 50s, TB 1g, in Org",
+    { dests = { "UC", "TB" }, prices = { UC = 5000, TB = 10000 }, price = 5000, at = "OG" })
+  offer("WTS port to IF 2 gold, I'm at SW bank", { dests = { "IF" }, prices = { IF = 20000 }, price = 20000, at = "SW" })
+  offer("WTS ports, in Org", { at = "OG" })
+end)
+
+T.test("summon ads are told apart; requests and other ads are not offers", function()
+  T.eq(P.offer("WTS summons 2g"), { kind = "summon", price = 20000, lang = "en" })
+  for _, text in ipairs({ "WTB port Org", "need port org pst", "LF mage port to UC", "WTS mage food and water",
+    "any mage? need port to orgrimmar", "port org", "LFG Stockades", "", "куплю порт в орг" }) do
+    T.eq(P.offer(text), nil, text)
+  end
+  T.eq(P.offer(nil), nil)
+end)
+
+T.test("a line is never both a request and an offer", function()
+  for _, text in ipairs({ "WTB port Org", "WTS port Org", "port org or uc? pst", "need port org 50s pst",
+    "anyone port me to org? 1g", "Portals to Org/UC/TB, 3g each", "Need a port to Org? /w me",
+    "LF port UC or TB", "ports org uc tb 1g pst", "куплю порт в орг 50с", "продаю порт в орг 50с" }) do
+    T.ok(not (P.parse(text) and P.offer(text)), text)
+  end
+end)
+
 T.done()

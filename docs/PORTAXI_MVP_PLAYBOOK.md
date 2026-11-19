@@ -66,6 +66,7 @@ Před vlnou 0 se commitne rozpracovaná práce na sondách.
 | D15 | Moduly startují z `ns.on("READY", Module.start)`. `READY` přichází na `PLAYER_LOGIN`, kdy jsou SavedVariables už naplněné výchozími hodnotami. Moduly startují v pořadí TOC. | Jedno místo startu, předvídatelné pořadí. |
 | D16 | **Žádosti z veřejného chatu** (přání uživatele 2026-11-19). Na směně addon čte say, yell, whisper a číslované kanály (kromě `PortaxiNet`). Čistý modul `Core/ChatParse.lua` pozná žádost o portál nebo summon anglicky i rusky („WTB port Org“, „куплю порт в орг“) a odliší nabídky prodejců. `Core/ChatReq.lua` drží seznam žádostí do měst, kam taxík umí, `Const.T.CHAT_REQUEST` sekund. Žádost se v seznamu ukáže s modrým proužkem a tlačítkem *Invite*. Klik (hardwarová událost hráče) pošle `C_PartyInfo.InviteUnit` a whisper s městem a cenou (pickup, jinak come-to-you) v jazyce žádosti. Dál jízda běží ručně: bez Ride, bez kontroly platby. Summon se zatím jen rozpozná; zobrazí se až s warlocky. Vypíná a zapíná se příkazem `/ptx chat` (`PortaxiCharDB.chatRequests`). | Taxík obslouží i hráče bez addonu. Pozvánka a whisper jdou jen z kliknutí. |
 | D17 | **Upozornění na novou verzi a What's new** (přání uživatele 2026-11-19). Bez serveru si verzi předávají addony. Každý Portaxi 10–20 s po přihlášení pošle do kanálu `VER\|<verze>`. Kdo uslyší starší verzi, odpoví v kanálu svou za náhodných 2–30 s, pokud mezitím nepromluví někdo se stejnou nebo novější verzí; odpovídá nejvýš jednou za 5 min. Jedna odpověď tak zasáhne všechny zastaralé hráče online a novinka se šíří, jakmile ji má první hráč. Hráč se starší verzí dostane jednou za session řádek v chatu. Předběžné buildy (`-dev`) se ohlásí, ale neodpovídají, a k aktualizaci na ně se nikdo nevyzývá. `VER` jako jediná zpráva nenese verzi protokolu a její formát se nikdy nemění, aby ji přečetl každý vydaný Portaxi. Okno What's new (`UI/WhatsNew.lua`) se otevře 4 s po přihlášení, když je `PortaxiDB.lastVersion` starší než běžící verze; ukáže záznamy z `Portaxi/Changelog.lua` mezi nimi. Nový hráč (`ns.firstRun`) ho nedostane. `/ptx news` ho otevře znovu, `/ptx version` ukáže verze. | Hráči se o aktualizaci dozví ve hře. Falešnou verzi od jednoho hráče nikdo dál nešíří (každý posílá jen svou) a nic se neukládá, takže zmizí s jeho odhlášením. |
+| D18 | **Nabídky mágů z veřejného chatu pro zákazníka** (přání uživatele 2026-11-19). Zrcadlo D16: addon čte say, yell, whisper a číslované kanály (kromě `PortaxiNet`) i mimo směnu. `ChatParse.offer` pozná inzerát prodejce (WTS, LFW, „Portals to Org/UC/TB 3g“, „Need a port? /w me“, „продаю порт в орг 50с“): města (žádné nebo „all cities“ = libovolné), cenu za město („UC 50s, TB 1g“, „1.5g“, „1g50s“, „75 silver“, „50с“, „tips“) a kde mág stojí („in Org“, jen anglicky). Prodávat musí portál, samotné „mage“ nestačí (voda, jídlo). `parse` a `offer` nikdy nesedí na stejný řádek. `Core/ChatOffers.lua` drží inzeráty `Const.T.CHAT_OFFER` s (300 s), novější inzerát téhož mága nahradí starší. Vynechá vlastní řádky, ne-mágy (třída z GUID, když ji klient zná), summony (až s warlocky) a mágy s Portaxi (jejich síťová nabídka už v seznamu je). Místo mága, od nejlepšího: odpověď `/who`, „in Org“ z inzerátu, zóna zónového kanálu (General, LocalDefense), který slyší jen hráči ve stejné zóně, nebo vlastní zóna u say a yell. Trade sdílí všechna města, takže inzerát z Tradu místo nemá. V *Browse* jsou inzeráty za taxíky Portaxi s modrým proužkem, „(chat)“, místem (jinak začátkem inzerátu), cenou (jinak „tips“ nebo „?“), tlačítkem *Invite* a tlačítkem *Where?*, dokud místo není z `/who`. Na dlaždici se počítají do počtu taxíků i nejnižší ceny. *Invite* (klik hráče) pošle `C_PartyInfo.InviteUnit` a whisper s městem a cenou z inzerátu v jazyce inzerátu. *Where?* (klik hráče; `/who` chce hardwarovou událost) pošle `C_FriendList.SendWho('n-"Jméno"')` a odpověď z `WHO_LIST_UPDATE` (`C_FriendList.GetWhoInfo`, shoda jména, třída MAGE) zapíše jako místo; hra navíc ukáže svou odpověď sama. Jízda dál běží ručně jako u D16. Vypínač je společný s D16: `/ptx chat` (`PortaxiCharDB.chatRequests`). **Neověřeno ve hře:** formát `/who` filtru pro jméno s příjmením, jestli `WHO_LIST_UPDATE` přijde i u jedné odpovědi, a název zónového kanálu (`General - <zóna>`). | Zákazník vidí i mágy bez addonu a jedním klikem jim dá party. Pozvánka, whisper i `/who` jdou jen z kliknutí. |
 
 ---
 
@@ -104,6 +105,7 @@ PortaxiCharDB = { prices = { COME = 30000, PICK = 15000 }, onDuty = false, respT
 | `HAIL_RESULT` | reqId, winner or nil | Dispatch |
 | `INCOMING_REQUEST` | request | Dispatch (taxík: nová poptávka, kterou umí splnit); ChatReq (žádost z chatu, `entry.chat = true`, D16) |
 | `CHAT_REQUESTS_CHANGED` | — | ChatReq (seznam žádostí z chatu se změnil, D16) |
+| `CHAT_OFFERS_CHANGED` | — | ChatOffers (seznam inzerátů mágů z chatu se změnil, D18) |
 | `RIDE_STARTED` / `RIDE_STATE` | ride | Ride |
 | `TRADE_PAID` | reqId, copper | Trade (taxík) |
 | `TRADE_MANUAL` | what (`"open"`/`"prefill"`/`"short"`), … | Trade (RidePanel ukáže ruční krok) |
@@ -204,6 +206,20 @@ Version.newest -> nejvyšší vydaná verze slyšená v této session, je-li nov
 Version.showNotes(entries)                               -- fire WHATS_NEW (bez argumentu celá historie)
 -- start on READY: VER do kanálu za 10-20 s; NET_MSG VER -> upozornění / odpověď (D17); What's new za 4 s
 ns.Changelog = { { version = "0.1.0", date = "2026-11-19", items = { "..." } }, ... }  -- Portaxi/Changelog.lua
+```
+
+### ChatParse, ChatReq, ChatOffers (D16, D18)
+
+```lua
+ChatParse.parse(text) -> { kind = "port", dest, lang } | { kind = "summon", place, lang } | nil     -- pure, žádost
+ChatParse.offer(text) -> { kind = "port", dests (nil = libovolné), prices = { [dest] = copper }, price (nejnižší),
+                           tip, at (kde mág stojí), lang } | { kind = "summon", price, tip, lang } | nil  -- pure
+ChatParse.clean(text) -> řádek bez barev, odkazů a ikon
+ChatReq.list() / find(reqId) / invite(reqId) / money(copper, lang) / cityName(dest, lang)            -- D16
+ChatOffers.list(dest) -> { chat = true, key, raw, dests, price, tip, place, whoAt, at, lang, text, invited }, ...
+ChatOffers.find(key) / invite(key, dest) -> true | nil, err ("off" "offer" "group" "invite")
+ChatOffers.locate(key) -> true | nil, err ("off" "offer" "who")   -- /who, jen z kliknutí
+ChatOffers.clear()                                                  -- /ptx chat vypnuto
 ```
 
 ### Market (agent B, čistý)

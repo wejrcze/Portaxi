@@ -18,6 +18,9 @@ soon as two players have it installed.
 - **Hail.** Set your top price and click *Hail a taxi*. The fastest mage takes it, and you pay **that mage's
   own price**, not your maximum.
 - **Or browse.** See every taxi for the city, cheapest first, and book the one you like.
+- **Mages without ForeverPortaxi too.** Browse also lists portal ads from Trade, General, say and yell
+  ("WTS ports UC 50s, TB 1g"), in **English and Russian**, with the price the mage named and where they stand.
+  *Where?* asks /who for you, *Invite* sends the mage a group invite and a whisper with your city.
 - **Come-to-you portal.** Sitting in an inn or a city? The mage uses a *Scroll of Liminal Passage*, appears
   next to you and opens the portal on the spot. You don't walk anywhere.
 - **A ride panel walks you through it**: who's coming, what to do next, how much to pay.

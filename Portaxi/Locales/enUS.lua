@@ -60,6 +60,8 @@ L["Your request is open."] = "Your request is open."
 L["You are on a ride."] = "You are on a ride."
 L["Book"] = "Book"
 L["Too dear"] = "Too dear"
+L["Where?"] = "Where?"
+L["tips"] = "tips"
 L["No taxi offers %s right now."] = "No taxi offers %s right now."
 L["Cancel"] = "Cancel"
 L["Waiting for %s to accept..."] = "Waiting for %s to accept..."
@@ -104,8 +106,10 @@ L["Sent"] = "Sent"
 L["%d more requests"] = "%d more requests"
 L["(chat)"] = "(chat)"
 L["Invite again"] = "Invite again"
-L["Taxi requests from chat: on."] = "Taxi requests from chat: on."
-L["Taxi requests from chat: off."] = "Taxi requests from chat: off."
+L["Reading public chat for taxi requests and offers: on."] =
+  "Reading public chat for taxi requests and offers: on."
+L["Reading public chat for taxi requests and offers: off."] =
+  "Reading public chat for taxi requests and offers: off."
 
 -- Duty box ----------------------------------------------------------------------------------------
 L["On duty"] = "On duty"
@@ -228,6 +232,8 @@ L["Go on duty to take requests."] = "Go on duty to take requests."
 L["Waiting for the rider to confirm your last answer."] = "Waiting for the rider to confirm your last answer."
 L["That request is gone."] = "That request is gone."
 L["Could not send the invite."] = "Could not send the invite."
+L["This client can't ask /who from an addon."] = "This client can't ask /who from an addon."
+L["Reading chat is off. /ptx chat turns it on."] = "Reading chat is off. /ptx chat turns it on."
 
 -- Ride steps, states and end reasons (RidePanel).
 L["Match"] = "Match"

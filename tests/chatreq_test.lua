@@ -60,7 +60,7 @@ T.test("nothing is read off duty or with /ptx chat off; going off duty clears th
   T.eq(#list(wow), 0, "off duty")
   wow.ns.Dispatch.setOnDuty(true)
   wow:slash("chat")
-  T.ok(wow.printed[#wow.printed]:find("Taxi requests from chat: off.", 1, true))
+  T.ok(wow.printed[#wow.printed]:find("Reading public chat for taxi requests and offers: off.", 1, true))
   wow:chat("CHANNEL", "WTB port Org", "Velvet Forever")
   T.eq(#list(wow), 0, "chat off")
   wow:slash("chat")

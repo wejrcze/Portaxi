@@ -1,7 +1,8 @@
 -- ChatReq: taxi requests from public chat, so a taxi can also serve players without Portaxi
 -- (user request 2026-11-19, playbook D16). While on duty and able to drive, every line of say, yell,
 -- whisper and the numbered channels goes through ChatParse; a port request to a city this taxi serves is
--- listed for Const.T.CHAT_REQUEST seconds. /ptx chat turns reading chat off and on (PortaxiCharDB.chatRequests).
+-- listed for Const.T.CHAT_REQUEST seconds. /ptx chat turns reading chat off and on (PortaxiCharDB.chatRequests),
+-- for the riders' list of mages' ads (ChatOffers, D18) as well.
 --   ChatReq.list()        -> entries, oldest first, in Dispatch.requests() shape plus chat fields:
 --                            { chat = true, request = { reqId = "chat:<key>", key, dest, at }, svc, price,
 --                              raw, lang, text, invited }
@@ -209,12 +210,20 @@ function ChatReq.invite(reqId)
   local send = ns.api("C_ChatInfo.SendChatMessage", "SendChatMessage")
   if send then
     local lang = WHISPER[entry.lang] and entry.lang or "en"
-    local city = lang == "ru" and CITY_RU[entry.request.dest] or C.CITY[entry.request.dest].name
+    local city = ChatReq.cityName(entry.request.dest, lang)
     send(WHISPER[lang]:format(city, ChatReq.money(entry.price, lang)), "WHISPER", nil, entry.raw)
   end
   entry.invited = true
   changed()
   return true
+end
+
+-- The city as a player of that language names it.
+function ChatReq.cityName(dest, lang)
+  if lang == "ru" and CITY_RU[dest] then
+    return CITY_RU[dest]
+  end
+  return C.CITY[dest] and C.CITY[dest].name or tostring(dest)
 end
 
 -- Lifecycle -----------------------------------------------------------------------------------------
@@ -233,14 +242,18 @@ local function expire()
   end
 end
 
--- /ptx chat: reading taxi requests from chat on or off.
+-- /ptx chat: reading public chat on or off, for taxi requests here and for mages' ads (ChatOffers, D18).
 function ChatReq.command()
   local db = charDB()
   db.chatRequests = db.chatRequests == false
   if not db.chatRequests then
     entries = {}
+    if ns.ChatOffers then
+      ns.ChatOffers.clear()
+    end
   end
-  ns.say(db.chatRequests and ns.L["Taxi requests from chat: on."] or ns.L["Taxi requests from chat: off."])
+  ns.say(db.chatRequests and ns.L["Reading public chat for taxi requests and offers: on."]
+    or ns.L["Reading public chat for taxi requests and offers: off."])
   changed()
 end
 
@@ -256,7 +269,7 @@ function ChatReq.start()
   C_Timer.NewTicker(EXPIRE_EVERY, expire)
 end
 
-ns.commands.chat = { fn = ChatReq.command, help = "taxi requests from public chat: on or off" }
+ns.commands.chat = { fn = ChatReq.command, help = "reading public chat (taxi requests, mages' ads): on or off" }
 ns.on("READY", ChatReq.start)
 ns.on("MARKET_CHANGED", function()
   if not enabled() and next(entries) then

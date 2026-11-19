@@ -4,8 +4,11 @@
 -- buttons. Layout follows the mock v0.8 rider view.
 -- Contract: playbook §2 "UI" and "Dispatch". Card F built it in wave 1, card G extended it in wave 2, card J
 -- polished it in wave 3. Data: Detect.current() (through MainFrame), Dispatch.market / status(); actions:
--- Dispatch.hail / book / cancel, each only when it exists. Redraws on MARKET_CHANGED, HAIL_RESULT, RIDE_STARTED
--- and RIDE_STATE.
+-- Dispatch.hail / book / cancel, each only when it exists. Redraws on MARKET_CHANGED, HAIL_RESULT, RIDE_STARTED,
+-- RIDE_STATE and CHAT_OFFERS_CHANGED.
+-- Browse lists mages' ads from public chat (ChatOffers, D18) after the Portaxi taxis: a blue stripe, "(chat)",
+-- where the mage stands (or the start of the ad), the price they named, an Invite button, and a Where? button
+-- that asks /who while the place is unknown.
 
 local _, ns = ...
 
@@ -45,6 +48,9 @@ R.ERRORS = {
   range = "That price is out of range.",
   here = "You are already in that city.",
   group = "Leave your group first: the taxi has to invite you.",
+  invite = "Could not send the invite.",
+  who = "This client can't ask /who from an addon.",
+  off = "Reading chat is off. /ptx chat turns it on.",
 }
 
 -- Building ----------------------------------------------------------------------------
@@ -124,6 +130,10 @@ local function buildRow(list, i)
   if i > 1 then
     W.hline(row, C.ROW_LINE, 0)
   end
+  row.stripe = W.texture(row, C.CHAT)
+  row.stripe:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -1)
+  row.stripe:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 1)
+  row.stripe:SetWidth(3)
   row.who = W.label(row, "GameFontHighlightSmall", C.TEXT)
   row.who:SetPoint("TOPLEFT", row, "TOPLEFT", 9, -4)
   row.who:SetWidth(200)
@@ -137,6 +147,13 @@ local function buildRow(list, i)
   row.book:SetScript("OnClick", function()
     if row.offer then
       R.book(row.offer)
+    end
+  end)
+  row.where = W.button(row, L["Where?"], 52, 20, "ghost")
+  row.where:SetPoint("RIGHT", row, "RIGHT", -136, 0)
+  row.where:SetScript("OnClick", function()
+    if row.offer and row.offer.chat then
+      R.locate(row.offer)
     end
   end)
   return row
@@ -222,20 +239,37 @@ local function offersFor(dest)
   return m:offers({ dest = dest, faction = R.profile.faction })
 end
 
--- "from 1g 50s · 2 taxis" or "no taxis".
-function R.tileText(dest)
-  local offers = offersFor(dest)
-  if #offers == 0 then
-    return L["no taxis"]
+-- Mages' ads from public chat for a city (D18), cheapest first.
+local function chatOffersFor(dest)
+  local c = ns.ChatOffers
+  if not (dest and type(c) == "table" and type(c.list) == "function") then
+    return {}
   end
-  local taxis, n = {}, 0
-  for _, o in ipairs(offers) do
-    if not taxis[o.key] then
-      taxis[o.key], n = true, n + 1
+  return c.list(dest)
+end
+
+-- "from 1g 50s · 2 taxis", "3 taxis" (no price known) or "no taxis". Mages from chat count too.
+function R.tileText(dest)
+  local taxis, n, lowest = {}, 0, nil
+  local function add(key, price)
+    if not taxis[key] then
+      taxis[key], n = true, n + 1
+    end
+    if price and (lowest == nil or price < lowest) then
+      lowest = price
     end
   end
+  for _, o in ipairs(offersFor(dest)) do
+    add(o.key, o.price)
+  end
+  for _, o in ipairs(chatOffersFor(dest)) do
+    add(o.key, o.price)
+  end
+  if n == 0 then
+    return L["no taxis"]
+  end
   local count = n == 1 and L["1 taxi"] or L["%d taxis"]:format(n)
-  return L["from %s"]:format(W.money(offers[1].price)) .. " · " .. count
+  return lowest and (L["from %s"]:format(W.money(lowest)) .. " · " .. count) or count
 end
 
 -- Refresh -----------------------------------------------------------------------------
@@ -336,9 +370,31 @@ local function refreshHail(ui, p, st)
   ui.hint:SetText(blocker or "")
 end
 
+local function leaderOrAlone()
+  if not IsInGroup() then
+    return true
+  end
+  local leader = ns.api("UnitIsGroupLeader")
+  return leader == nil or leader("player") == true
+end
+
+-- Why the Invite button of a chat ad is grey, or nil.
+local function inviteBlocker(offer, carried, st)
+  local c = ns.ChatOffers
+  if not (type(c) == "table" and type(c.invite) == "function") or st.hail or activeRide() then
+    return "busy"
+  elseif not leaderOrAlone() then
+    return "group"
+  elseif carried and offer.price and offer.price > carried then
+    return "money"
+  end
+end
+
 -- Why a Book button is grey, or nil.
 local function bookBlocker(offer, p, carried, st)
-  if not dispatchFn("book") or st.hail or activeRide() then
+  if offer.chat then
+    return inviteBlocker(offer, carried, st)
+  elseif not dispatchFn("book") or st.hail or activeRide() then
     return "busy"
   elseif IsInGroup() then
     return "group"
@@ -349,20 +405,71 @@ local function bookBlocker(offer, p, carried, st)
   end
 end
 
+local CHAT_QUOTE = 30 -- bytes of the ad shown while the mage's place is unknown
+
+-- The start of a chat line, cut on a whole UTF-8 character.
+local function quote(text)
+  text = tostring(text or "")
+  if #text <= CHAT_QUOTE then
+    return '"' .. text .. '"'
+  end
+  local cut = text:sub(1, CHAT_QUOTE):gsub("[\192-\255][\128-\191]*$", "")
+  return '"' .. cut .. '..."'
+end
+
+local function drawTaxi(row, o, blocker)
+  row.who:SetText(("%s · %s"):format(o.key, L[SERVICE_SHORT[o.svc]]))
+  row.place:SetText(o.offer and o.offer.place or "")
+  row.price:SetText(W.money(o.price))
+  row.book:SetText(blocker == "money" and L["Too dear"] or L["Book"])
+  row.stripe:Hide()
+  row.where:Hide()
+  row.who:SetWidth(200)
+  row.place:SetWidth(200)
+end
+
+-- A mage's ad from chat: where they stand (or what they wrote), the price they named, Invite and Where?.
+local function drawChat(row, o, blocker)
+  row.who:SetText(("%s %s"):format(o.key, L["(chat)"]))
+  row.place:SetText(o.place or quote(o.text))
+  row.price:SetText(o.price and W.money(o.price) or (o.tip and L["tips"] or "?"))
+  if blocker == "money" then
+    row.book:SetText(L["Too dear"])
+  else
+    row.book:SetText(o.invited and L["Invite again"] or L["Invite"])
+  end
+  row.stripe:Show()
+  local c = ns.ChatOffers
+  row.where:SetShown(o.whoAt == nil and type(c) == "table" and type(c.locate) == "function")
+  local width = row.where:IsShown() and 150 or 200 -- room for Where?
+  row.who:SetWidth(width)
+  row.place:SetWidth(width)
+end
+
+-- Portaxi taxis first (cheapest first), then mages' ads from chat.
+local function browseList(dest)
+  local list = offersFor(dest)
+  for _, o in ipairs(chatOffersFor(dest)) do
+    list[#list + 1] = o
+  end
+  return list
+end
+
 local function refreshBrowse(ui, p, st)
-  local offers = offersFor(R.dest)
+  local offers = browseList(R.dest)
   local carried = money()
   for i, row in ipairs(ui.rows) do
     local o = offers[i]
     row.offer = o
     row:SetShown(o ~= nil)
     if o then
-      row.who:SetText(("%s · %s"):format(o.key, L[SERVICE_SHORT[o.svc]]))
-      row.place:SetText(o.offer and o.offer.place or "")
-      row.price:SetText(W.money(o.price))
       local blocker = bookBlocker(o, p, carried, st)
+      if o.chat then
+        drawChat(row, o, blocker)
+      else
+        drawTaxi(row, o, blocker)
+      end
       W.setEnabled(row.book, blocker == nil)
-      row.book:SetText(blocker == "money" and L["Too dear"] or L["Book"])
     end
   end
   local city = R.dest and ns.Const.CITY[R.dest]
@@ -438,7 +545,7 @@ local function redrawIfVisible()
   end
 end
 
-for _, event in ipairs({ "MARKET_CHANGED", "HAIL_RESULT", "RIDE_STARTED", "RIDE_STATE" }) do
+for _, event in ipairs({ "MARKET_CHANGED", "HAIL_RESULT", "RIDE_STARTED", "RIDE_STATE", "CHAT_OFFERS_CHANGED" }) do
   ns.on(event, redrawIfVisible)
 end
 
@@ -464,6 +571,14 @@ function R.hail()
 end
 
 function R.book(offer)
+  if offer.chat then
+    if bookBlocker(offer, R.profile, money(), status()) == nil then
+      local ok, err = ns.ChatOffers.invite(offer.key, R.dest)
+      R.error = (not ok) and err or nil
+      R.redraw()
+    end
+    return
+  end
   local book = dispatchFn("book")
   if book and bookBlocker(offer, R.profile, money(), status()) == nil then
     local ok, err = book(offer.key, R.dest, offer.svc)
@@ -477,6 +592,16 @@ function R.cancel()
   if cancel then
     cancel()
     R.error = nil
+    R.redraw()
+  end
+end
+
+-- Asks /who for a mage from chat (D18); the answer comes back as CHAT_OFFERS_CHANGED.
+function R.locate(offer)
+  local c = ns.ChatOffers
+  if type(c) == "table" and type(c.locate) == "function" then
+    local ok, err = c.locate(offer.key)
+    R.error = (not ok) and err or nil
     R.redraw()
   end
 end
