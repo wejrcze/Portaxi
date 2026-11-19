@@ -65,6 +65,7 @@ Před vlnou 0 se commitne rozpracovaná práce na sondách.
 | D14 | **Žádný `Bindings.xml`.** Secure tlačítko je globální `PortaxiNextButton`. Hráč ho spustí makrem `/click PortaxiNextButton`, nebo klávesou z nastavení addonu přes `SetOverrideBindingClick` (mimo boj). | Chybný `Bindings.xml` rozbije načtení addonu a jeho změna vyžaduje restart klienta. |
 | D15 | Moduly startují z `ns.on("READY", Module.start)`. `READY` přichází na `PLAYER_LOGIN`, kdy jsou SavedVariables už naplněné výchozími hodnotami. Moduly startují v pořadí TOC. | Jedno místo startu, předvídatelné pořadí. |
 | D16 | **Žádosti z veřejného chatu** (přání uživatele 2026-11-19). Na směně addon čte say, yell, whisper a číslované kanály (kromě `PortaxiNet`). Čistý modul `Core/ChatParse.lua` pozná žádost o portál nebo summon anglicky i rusky („WTB port Org“, „куплю порт в орг“) a odliší nabídky prodejců. `Core/ChatReq.lua` drží seznam žádostí do měst, kam taxík umí, `Const.T.CHAT_REQUEST` sekund. Žádost se v seznamu ukáže s modrým proužkem a tlačítkem *Invite*. Klik (hardwarová událost hráče) pošle `C_PartyInfo.InviteUnit` a whisper s městem a cenou (pickup, jinak come-to-you) v jazyce žádosti. Dál jízda běží ručně: bez Ride, bez kontroly platby. Summon se zatím jen rozpozná; zobrazí se až s warlocky. Vypíná a zapíná se příkazem `/ptx chat` (`PortaxiCharDB.chatRequests`). | Taxík obslouží i hráče bez addonu. Pozvánka a whisper jdou jen z kliknutí. |
+| D17 | **Upozornění na novou verzi a What's new** (přání uživatele 2026-11-19). Bez serveru si verzi předávají addony. Každý Portaxi 10–20 s po přihlášení pošle do kanálu `VER\|<verze>`. Kdo uslyší starší verzi, odpoví v kanálu svou za náhodných 2–30 s, pokud mezitím nepromluví někdo se stejnou nebo novější verzí; odpovídá nejvýš jednou za 5 min. Jedna odpověď tak zasáhne všechny zastaralé hráče online a novinka se šíří, jakmile ji má první hráč. Hráč se starší verzí dostane jednou za session řádek v chatu. Předběžné buildy (`-dev`) se ohlásí, ale neodpovídají, a k aktualizaci na ně se nikdo nevyzývá. `VER` jako jediná zpráva nenese verzi protokolu a její formát se nikdy nemění, aby ji přečetl každý vydaný Portaxi. Okno What's new (`UI/WhatsNew.lua`) se otevře 4 s po přihlášení, když je `PortaxiDB.lastVersion` starší než běžící verze; ukáže záznamy z `Portaxi/Changelog.lua` mezi nimi. Nový hráč (`ns.firstRun`) ho nedostane. `/ptx news` ho otevře znovu, `/ptx version` ukáže verze. | Hráči se o aktualizaci dozví ve hře. Falešnou verzi od jednoho hráče nikdo dál nešíří (každý posílá jen svou) a nic se neukládá, takže zmizí s jeho odhlášením. |
 
 ---
 
@@ -84,9 +85,11 @@ ns.commands[name] = { fn = function(args), args = "<x>", help = "..." }  -- /ptx
 ns.now() -> GetTime()                -- the only time source glue code uses
 ns.fillDefaults(dst, defaults)       -- recursive, existing values win
 ns.L[key] -> text                    -- Locales/enUS.lua; returns the key until wave 3
+ns.VERSION                           -- addon version, = "## Version" in Portaxi.toc (tests/version_test.lua)
+ns.firstRun                          -- true when PortaxiDB did not exist before this login (D17)
 -- Lifecycle: ADDON_LOADED fills SavedVariables; PLAYER_LOGIN fires "READY" (D15).
 -- SavedVariables, defaults filled on ADDON_LOADED:
-PortaxiDB     = { version = 1, ui = { pos, minimap = { angle } }, caps = {}, diag, probe }
+PortaxiDB     = { version = 1, ui = { pos, minimap = { angle } }, caps = {}, diag, probe, lastVersion }  -- lastVersion: D17
 PortaxiCharDB = { prices = { COME = 30000, PICK = 15000 }, onDuty = false, respTimes = {}, lastRideAt = 0, lateCancels = {} }
 ```
 
@@ -106,6 +109,8 @@ PortaxiCharDB = { prices = { COME = 30000, PICK = 15000 }, onDuty = false, respT
 | `TRADE_MANUAL` | what (`"open"`/`"prefill"`/`"short"`), … | Trade (RidePanel ukáže ruční krok) |
 | `SECURE_CHANGED` | spec or nil | Secure |
 | `CAPS_CHANGED` | caps | kdokoli, kdo mění `PortaxiDB.caps` |
+| `VERSION_NEWER` | version | Version (v síti běží novější vydaná verze, D17) |
+| `WHATS_NEW` | entries (záznamy `ns.Changelog`, nejnovější první) | Version (po aktualizaci, `/ptx news`); otevře `UI.WhatsNew` |
 
 ### Const (architekt, vlna 0)
 
@@ -165,6 +170,7 @@ Dekódovaná zpráva je tabulka s `type` a poli níže. `encode` bere stejný tv
 | `GONE` | `reqId` |
 | `STATE` | `reqId`, `state` str |
 | `CANCEL` | `reqId`, `by` (`"rider"` / `"taxi"`), `late` bool |
+| `VER` | `ver` verze addonu (`1.2.3` nebo `1.2.3-dev`). **Na drátě `VER\|<verze>` bez verze protokolu**, formát se nikdy nemění (D17). |
 
 - Kódování: seznam `a,b`; mapa `COME:30000,PICK:15000`; bool `1`/`0`; int desítkově.
 - Svc ∈ {`COME`, `PICK`}, city key ∈ `Const.CITY`, ceny (`ask`, `max`, `price`) v rozmezí `Const.PRICE`, `lvl` 1–100, `eta`/`wait`/`resp` ≥ 0. Mimo rozsah → `"range"`.
@@ -185,6 +191,19 @@ Net.joined() -> bool
 --   own echo (key == UnitName("player")) dropped; Protocol.decode fails -> dropped (stats.dropped);
 --   else ns.fire("NET_MSG", msg, key, rawSender, via)
 -- queue: max 4 msgs/s; a queued HELLO broadcast is replaced by a newer one
+```
+
+### Version (architekt, D17)
+
+```lua
+Version.parse(s) -> { major, minor, patch, pre } | nil   -- pure; "1.2.3", "1.2.3-dev"
+Version.compare(a, b) -> -1 | 0 | 1 | nil                -- pure; "0.2.0-dev" < "0.2.0"; nil = not a version
+Version.isRelease(s) -> bool                             -- pure
+Version.notes(changelog, from, to) -> entries            -- pure; from < version <= to (bez -pre), nejnovější první
+Version.newest -> nejvyšší vydaná verze slyšená v této session, je-li novější než naše; jinak nil
+Version.showNotes(entries)                               -- fire WHATS_NEW (bez argumentu celá historie)
+-- start on READY: VER do kanálu za 10-20 s; NET_MSG VER -> upozornění / odpověď (D17); What's new za 4 s
+ns.Changelog = { { version = "0.1.0", date = "2026-11-19", items = { "..." } }, ... }  -- Portaxi/Changelog.lua
 ```
 
 ### Market (agent B, čistý)

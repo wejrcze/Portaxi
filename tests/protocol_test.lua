@@ -87,11 +87,30 @@ T.test("FIELDS lists every type in wire order", function()
   T.eq(P.FIELDS.GONE, { "reqId" })
   T.eq(P.FIELDS.STATE, { "reqId", "state" })
   T.eq(P.FIELDS.CANCEL, { "reqId", "by", "late" })
+  T.eq(P.FIELDS.VER, { "ver" })
   local n = 0
   for _ in pairs(P.FIELDS) do
     n = n + 1
   end
-  T.eq(n, #TYPES)
+  T.eq(n, #TYPES + 1, "the TYPES above and VER")
+end)
+
+-- VER (D17) has no protocol version on the wire, so it must stay readable whatever PROTO becomes.
+T.test("VER round trips without a protocol version", function()
+  T.eq(P.encode({ type = "VER", ver = "0.2.0" }), "VER|0.2.0")
+  T.eq(P.decode("VER|0.2.0"), { type = "VER", ver = "0.2.0" })
+  T.eq(P.decode("VER|1.10.3-dev"), { type = "VER", ver = "1.10.3-dev" })
+  T.eq(P.decode("VER|0.3.0-beta.2"), { type = "VER", ver = "0.3.0-beta.2" })
+end)
+
+T.test("VER rejects anything that is not a version", function()
+  for _, bad in ipairs({ "", "1", "1.2", "1.2.x", "v1.2.3", "1.2.3-", "1.2.3 ", "1.2.3-a,b", "1.2.3-" .. ("x"):rep(30) }) do
+    T.eq(select(2, P.decode("VER|" .. bad)), "field", bad)
+    T.eq(select(2, P.encode({ type = "VER", ver = bad })), "field", bad)
+  end
+  T.eq(select(2, P.encode({ type = "VER" })), "field")
+  T.eq(select(2, P.encode({ type = "VER", ver = 1 })), "field")
+  T.eq(select(2, P.decode("VER|1.2.3|x")), "format")
 end)
 
 T.test("empty lists, empty maps and empty free strings round trip", function()

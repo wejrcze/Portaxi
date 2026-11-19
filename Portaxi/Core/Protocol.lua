@@ -21,6 +21,7 @@ local INT_DIGITS = 12      -- longer int tokens are out of range without parsing
 local SVC = { COME = true, PICK = true }
 local SVC_ORDER = { "COME", "PICK" } -- map keys are written in this order
 local BY = { rider = true, taxi = true }
+local VER_MAX = 32 -- longest addon version string on the wire
 
 -- Splits s on a one-character separator, keeping empty parts.
 local function split(s, sep)
@@ -254,10 +255,25 @@ for msgType, spec in pairs(SPEC) do
   end
   Protocol.FIELDS[msgType] = names
 end
+Protocol.FIELDS.VER = { "ver" }
+
+-- An addon version as it may travel in VER: "1.2.3" with an optional "-suffix" of letters, digits and dots.
+local function isVersion(v)
+  if type(v) ~= "string" or #v > VER_MAX then
+    return false
+  end
+  return v:find("^%d+%.%d+%.%d+$") ~= nil or v:find("^%d+%.%d+%.%d+%-[%w%.]+$") ~= nil
+end
 
 -- API --------------------------------------------------------------------------------
 
 function Protocol.encode(msg)
+  if type(msg) == "table" and msg.type == "VER" then
+    if not isVersion(msg.ver) then
+      return nil, "field"
+    end
+    return "VER|" .. msg.ver
+  end
   local spec = type(msg) == "table" and SPEC[msg.type]
   if not spec then
     return nil, "type"
@@ -288,6 +304,15 @@ function Protocol.decode(s)
   local parts = split(s, "|")
   if #parts < 2 then
     return nil, "format"
+  end
+  if parts[1] == "VER" then
+    if #parts ~= 2 then
+      return nil, "format"
+    end
+    if not isVersion(parts[2]) then
+      return nil, "field"
+    end
+    return { type = "VER", ver = parts[2] }
   end
   if parts[2] ~= VERSION then
     return nil, "version"

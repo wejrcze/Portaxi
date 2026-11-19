@@ -162,6 +162,18 @@ L["Accept"] = "Accept"
 L["Open trade"] = "Open trade"
 L["Teleport to %s"] = "Teleport to %s"
 
+-- Version notice and What's new (Core/Version.lua, UI/WhatsNew.lua) -----------------------------------
+L["Version %s is available (you have %s). Update Portaxi to get it."] =
+  "Version %s is available (you have %s). Update Portaxi to get it."
+L["You have %s. Version %s is available."] = "You have %s. Version %s is available."
+L["You have %s, the newest version seen on the network."] = "You have %s, the newest version seen on the network."
+L["What's new"] = "What's new"
+L["Portaxi %s"] = "Portaxi %s"
+L["Version %s · %s"] = "Version %s · %s"
+L["Version %s"] = "Version %s"
+L["Got it"] = "Got it"
+L["/ptx news shows this again."] = "/ptx news shows this again."
+
 -- Indirect keys -----------------------------------------------------------------------------------
 -- Cities (Const.CITY[key].name) and factions (UnitFactionGroup).
 L["Orgrimmar"] = "Orgrimmar"

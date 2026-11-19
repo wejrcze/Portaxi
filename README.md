@@ -124,11 +124,23 @@ it formed.
   group.
 - **The portal comes only after payment.** The taxi's addon compares its gold before and after the trade.
 
+## Updates and What's new
+
+Portaxi has no server, so the addons tell each other which version they run. About 10–20 seconds after login
+your Portaxi says its version on the hidden channel; a player with a newer version answers. When someone on the
+network runs a newer release than you, Portaxi prints one line in chat: *Version X is available (you have Y).*
+Update the addon then (CurseForge, or the zip from GitHub). Nothing is downloaded or installed by the addon
+itself. `/ptx version` shows your version and the newest one seen this session.
+
+After an update, a **What's new** window opens a few seconds after login with the changes since the version you
+had before. A new player does not get it. `/ptx news` opens it again with the whole history.
+
 ## What Portaxi does on its own, and what it never does
 
 On its own it:
 
-- reads your character (class, portals, runes, scrolls, resting, place, gold) and talks on the hidden channel;
+- reads your character (class, portals, runes, scrolls, resting, place, gold) and talks on the hidden channel,
+  including its version number;
 - sends the party invite (taxi), and accepts the invite of the matched taxi and nobody else (rider);
 - reads public chat for taxi requests while you are on duty (it invites and whispers only when you click *Invite*);
 - opens the trade window with your matched partner (taxi);
@@ -151,6 +163,8 @@ It never:
 | `/ptx chat` | Turn reading taxi requests from public chat on or off (on by default). |
 | `/ptx key <KEY>` | Bind a key to the Portaxi button; without a key, clear it. |
 | `/ptx ride [cancel]` | Show the active ride, or cancel it. |
+| `/ptx version` | Show your version and the newest one seen on the network. |
+| `/ptx news` | Open the What's new window. |
 | `/ptx detect` | Show what the addon detects on this character. |
 | `/ptx netstat` | Show the network state (joined, channel, queue, messages sent/received/dropped). |
 | `/ptx diag` | Check what the addon can read on this character and save it for a bug report. |

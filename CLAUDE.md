@@ -38,6 +38,16 @@ No server: the dispatch runs inside the players' addons over a hidden chat chann
 - Screenshots: `<WoW>\_forever_\Screenshots`.
 - Never write into the WTF folder; it belongs to the game and is overwritten on logout.
 
+## Releasing
+
+- Bump the version in `Portaxi/Portaxi.toc` (`## Version`) and `Portaxi/Core/Init.lua` (`ns.VERSION`), and add
+  an entry on top of `Portaxi/Changelog.lua` (player-facing sentences; it feeds the What's new window).
+  `tests/version_test.lua` fails when the three disagree. A `-dev` suffix marks a build that is not released:
+  it never tells others to update.
+- Then `tools\package.ps1` builds `dist/Portaxi-<version>.zip`.
+- The `VER|<version>` message (playbook D17) is the one message without a protocol version. Never change its
+  format: every released Portaxi must keep reading it.
+
 ## Code rules
 
 - Lua 5.1 (WoW). Code, comments and identifiers in English.

@@ -242,7 +242,8 @@ SlashCmdList.PORTAXI = function(msg)
 end
 
 -- Lifecycle ----------------------------------------------------------------------
--- ADDON_LOADED: SavedVariables get their defaults.
+-- ADDON_LOADED: SavedVariables get their defaults. ns.firstRun = true when PortaxiDB did not exist yet (a fresh
+-- install on this account), so Version can tell a new player from one who updated (D17).
 -- PLAYER_LOGIN: ns.fire("READY"); modules start from ns.on("READY", ...) in TOC order.
 
 local events = CreateFrame("Frame")
@@ -250,6 +251,7 @@ events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
 events:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" and arg1 == ADDON then
+    ns.firstRun = PortaxiDB == nil
     PortaxiDB = fill(PortaxiDB or {}, DB_DEFAULTS)
     PortaxiCharDB = fill(PortaxiCharDB or {}, CHAR_DEFAULTS)
   elseif event == "PLAYER_LOGIN" then
