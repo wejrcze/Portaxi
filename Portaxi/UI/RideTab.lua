@@ -398,6 +398,8 @@ local function bookBlocker(offer, p, carried, st)
     return inviteBlocker(offer, carried, st)
   elseif not dispatchFn("book") or st.hail or activeRide() then
     return "busy"
+  elseif offer.self then
+    return "self" -- the taxi's own row in the test view (/ptx mapself)
   elseif offer.busy then
     return "fighting"
   elseif IsInGroup() then
@@ -433,6 +435,8 @@ local function drawTaxi(row, o, blocker)
     row.book:SetText(L["Too dear"])
   elseif blocker == "fighting" then
     row.book:SetText(L["Busy"])
+  elseif blocker == "self" then
+    row.book:SetText(L["You"])
   else
     row.book:SetText(L["Book"])
   end

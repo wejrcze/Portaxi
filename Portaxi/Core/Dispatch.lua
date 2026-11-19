@@ -137,6 +137,9 @@ local function averageResponse()
   return sum / #list
 end
 
+-- The taxi's average response time in seconds (what its HELLO sends as resp).
+Dispatch.response = averageResponse
+
 -- Seconds until this taxi can deliver the service (plan §6): COME = response + scroll cast,
 -- PICK = Const.ETA_PICK + response.
 function Dispatch.eta(svc)

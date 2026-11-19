@@ -200,6 +200,8 @@ L["Busy"] = "Busy"
 L["Map"] = "Map"
 L["On the map"] = "On the map"
 L["Taxi on the map"] = "Taxi on the map"
+L["You"] = "You"
+L["This is you (test view)."] = "This is you (test view)."
 L["While levelling: riders near you who look for a ride see you on their map."] =
   "While levelling: riders near you who look for a ride see you on their map."
 L["You are on the map."] = "You are on the map."

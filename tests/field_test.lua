@@ -254,4 +254,43 @@ T.test("/ptx field puts the taxi back on the map after Off; /ptx where stores wh
   T.eq(w.field.blocker, "off")
 end)
 
+T.test("/ptx mapself: the taxi sees its own pin and Browse row from its last SPOT, and cannot book itself", function()
+  local sim, taxi = world()
+  mapOn(sim, taxi)
+  local F, R = taxi.ns.Field, taxi.ns.UI.RideTab
+  taxi:slash("show")
+  R.selectCity("OG")
+  T.eq(#F.nearby("OG"), 0, "off by default: the network never echoes the own SPOT")
+  taxi:slash("mapself")
+  local list = F.nearby("OG")
+  T.eq(#list, 1)
+  local e = list[1]
+  T.eq({ e.key, e.self, e.svc, e.price }, { "Thalindra Forever", true, "PICK", 15000 })
+  T.ok(math.abs(e.yards - math.sqrt(10 * 10 + 5 * 5)) < 1e-6, "from the exact position to the own cell")
+  T.eq(#F.nearby("TB"), 0, "a city the taxi does not serve")
+  R.setMode("browse")
+  local row = R.ui.rows[1]
+  T.eq(row.offer.self, true)
+  T.eq(row.book:GetText(), "You")
+  T.ok(not row.book:IsEnabled())
+  local env = taxi.env
+  env.C_Map = env.C_Map or {}
+  env.C_Map.GetMapPosFromWorldPos = function(_, v, mapId)
+    return mapId, { x = (5000 - v.y) / 10000, y = (5000 - v.x) / 10000 }
+  end
+  env.WorldMapFrame = env.CreateFrame("Frame")
+  env.WorldMapFrame.ScrollContainer = { Child = env.CreateFrame("Frame") }
+  env.WorldMapFrame.GetMapID = function() return 1411 end
+  env.WorldMapFrame:Show()
+  local P = taxi.ns.UI.MapPins
+  T.ok(P.attach())
+  P.refresh()
+  T.ok(P.pins[1] and P.pins[1]:IsShown(), "own pin drawn")
+  P.pins[1]:Click()
+  sim:advance(1)
+  T.eq(taxi.ns.Dispatch.status().hail, nil, "no booking of oneself")
+  taxi:slash("mapself")
+  T.eq(#F.nearby("OG"), 0, "off again")
+end)
+
 T.done()

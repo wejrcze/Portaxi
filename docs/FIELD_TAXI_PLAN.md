@@ -84,7 +84,7 @@ zůstane funkční.
 | F1 | Vlastní poloha mimo instanci. | **Ověřeno:** `UnitPosition` funguje (záloha přes C_Map taky). |
 | F2 | Převod světové polohy na mapu pro piny. | **API ověřeno** (cesta tam a zpět sedí na 0,0001). Vykreslení pinů na canvasu zbývá: piny vidí jen jiný hráč. |
 | F3 | Stejné číslování a souřadnice z `UnitPosition` a z `C_Map`. | **Ověřeno:** obě dávají instanci 1, rozdíl polohy pod 0,05 yardu. |
-| F4 | Taint: rámce na canvasu mapy. | Neověřeno, chce druhého hráče. |
+| F4 | Taint: rámce na canvasu mapy. | Neověřeno. Sám: `/ptx mapself` (mág uvidí vlastní pin a řádek v Browse, jen tuto session, objednat sebe nejde); jízdu pak ověřit s druhým hráčem. |
 | — | Zaokrouhlení na mřížku 75 yd a `SPOT` | **Ověřeno:** 1368 / -4373 → 1350 / -4350. |
 
 Brána ve hře (dva hráči): mág venku zapne *Map*, zákazník venku ve stejné zóně zvolí město, vidí pin

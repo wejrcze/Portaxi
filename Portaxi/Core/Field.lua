@@ -21,6 +21,9 @@
 --   Field.nearby(dest) -> list, blocker      Market:nearby around the rider (own faction, own key left out),
 --                                            each entry with eta = Field.walk(yards, offer.resp)
 --
+-- Test view (/ptx mapself, this session only): a taxi on the map also sees itself, built from its own last SPOT
+-- (the network never echoes it back), as an entry with self = true. It cannot be booked.
+--
 -- Positions: UnitPosition("player") first, then C_Map (best map, map position, world position), as UI.Arrow.
 -- World N grows to the north, W to the west; inst is the instance (continent) ID from either source.
 -- Fires FIELD_CHANGED when the switch or the taxi's state on the map changes. /ptx field toggles the switch.
@@ -244,10 +247,45 @@ function Field.nearby(dest)
   local n, w, inst = Field.position()
   local list = D.market:nearby({ faction = profile.faction, dest = dest, inst = inst, n = n, w = w,
                                  exclude = ns.selfKey() }, ns.now())
+  local own = Field.showSelf and Field.selfEntry(dest, n, w, inst)
+  if own then
+    list[#list + 1] = own
+    table.sort(list, function(a, b)
+      if a.yards ~= b.yards then
+        return a.yards < b.yards
+      end
+      return a.key < b.key
+    end)
+  end
   for _, e in ipairs(list) do
     e.eta = Field.walk(e.yards, e.offer.resp)
   end
   return list
+end
+
+-- The taxi's own pin for the test view: what riders get from its last SPOT and its offer, or nil while it is
+-- not on the map or does not serve dest.
+function Field.selfEntry(dest, n, w, inst)
+  local profile, services = current()
+  local price = (charDB().prices or {}).PICK
+  if not (sent and Field.active() and profile and price and sent.inst == inst) then
+    return nil
+  end
+  local serves = false
+  for _, d in ipairs(services.dests or {}) do
+    serves = serves or d == dest
+  end
+  if not serves then
+    return nil
+  end
+  local dn, dw = sent.n - n, sent.w - w
+  return {
+    key = ns.selfKey() or "?", svc = "PICK", price = price, self = true, busy = sent.busy,
+    yards = math.sqrt(dn * dn + dw * dw),
+    spot = { inst = sent.inst, n = sent.n, w = sent.w, busy = sent.busy },
+    offer = { cls = profile.class, lvl = profile.level, dests = services.dests, resp = ns.Dispatch.response(),
+              place = profile.zone },
+  }
 end
 
 -- Lifecycle --------------------------------------------------------------------------------------
@@ -299,6 +337,30 @@ local function command()
 end
 
 ns.commands.field = { fn = command, help = "taxi on the map while levelling: on or off" }
+
+-- /ptx mapself: the test view, for checking the pin and the Browse row alone.
+local function mapSelf()
+  Field.showSelf = not Field.showSelf
+  if not Field.showSelf then
+    ns.say("mapself: off")
+    return
+  end
+  ns.say("mapself: on for this session. You see your own pin and Browse row as riders do; it cannot be booked.")
+  local st = Field.status()
+  if not st.active then
+    ns.say("You are not on the map yet: " .. tostring(st.blocker) .. ". /ptx field puts you there.")
+  end
+  local R = ns.UI and ns.UI.RideTab
+  local blocker = Field.riderBlocker(type(R) == "table" and R.dest or nil)
+  if blocker == "dest" then
+    ns.say("Pick a city in the Ride tab (Browse), then open the world map.")
+  elseif blocker then
+    ns.say("Riders see nothing while: " .. blocker)
+  end
+  ns.fire("MARKET_CHANGED")
+end
+
+ns.commands.mapself = { fn = mapSelf, help = "test: see yourself on the map and in Browse as riders do" }
 
 -- /ptx where: what the position APIs really return here (plan §5 F1-F3; /ptx diag only sees that they exist).
 -- Prints and stores PortaxiDB.where: UnitPosition, the C_Map map and world positions, the way back from the

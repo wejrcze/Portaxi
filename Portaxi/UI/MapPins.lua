@@ -112,7 +112,9 @@ local function showTooltip(pin)
   GameTooltip:AddLine(("%s %s · %s %s"):format(W.className(e.offer.cls), tostring(e.offer.lvl or ""), L[SERVICE],
     W.money(e.price)), 1, 1, 1)
   GameTooltip:AddLine(L["~%d yd · ~%d s on foot"]:format(math.floor(e.yards + 0.5), e.eta), 1, 1, 1)
-  if e.busy then
+  if e.self then
+    GameTooltip:AddLine(L["This is you (test view)."], unpack(COL.MUTED))
+  elseif e.busy then
     GameTooltip:AddLine(L["Busy: fighting or on a ride."], unpack(COL.WARN))
   else
     GameTooltip:AddLine(L["Click: ride to %s"]:format(city), unpack(COL.GOLD))
@@ -123,6 +125,10 @@ end
 local function onClick(pin)
   local e = pin.entry
   local R = ns.UI.RideTab
+  if e and e.self then
+    ns.say(L["This is you (test view)."])
+    return
+  end
   if not (e and not e.busy and type(R) == "table" and type(R.book) == "function") then
     return
   end
