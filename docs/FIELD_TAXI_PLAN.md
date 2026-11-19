@@ -82,9 +82,9 @@ zůstane funkční.
 | # | Co | Stav |
 |---|---|---|
 | F1 | Vlastní poloha mimo instanci. | **Ověřeno:** `UnitPosition` funguje (záloha přes C_Map taky). |
-| F2 | Převod světové polohy na mapu pro piny. | **API ověřeno** (cesta tam a zpět sedí na 0,0001). Vykreslení pinů na canvasu zbývá: piny vidí jen jiný hráč. |
+| F2 | Převod světové polohy na mapu pro piny. | **Ověřeno** (cesta tam a zpět sedí na 0,0001; `/ptx mapself` 2026-11-19: pin na mapě Durotaru u hráče, tooltip). Pin musí mít úroveň vrstvy od `GetPinFrameLevelsManager` (`PIN_FRAME_LEVEL_AREA_POI`): o 20 nad canvasem ho překryly prozkoumané oblasti, myš ho přitom našla. |
 | F3 | Stejné číslování a souřadnice z `UnitPosition` a z `C_Map`. | **Ověřeno:** obě dávají instanci 1, rozdíl polohy pod 0,05 yardu. |
-| F4 | Taint: rámce na canvasu mapy. | Neověřeno. Sám: `/ptx mapself` (mág uvidí vlastní pin a řádek v Browse, jen tuto session, objednat sebe nejde); jízdu pak ověřit s druhým hráčem. |
+| F4 | Taint: rámce na canvasu mapy. | Bez chyb v BugGrabberu s otevřenou mapou (jeden hráč, 2026-11-19); v boji neověřeno. Sám: `/ptx mapself` (mág uvidí vlastní pin a řádek v Browse, jen tuto session, objednat sebe nejde); jízdu pak ověřit s druhým hráčem. |
 | — | Zaokrouhlení na mřížku 75 yd a `SPOT` | **Ověřeno:** 1368 / -4373 → 1350 / -4350. |
 
 Brána ve hře (dva hráči): mág venku zapne *Map*, zákazník venku ve stejné zóně zvolí město, vidí pin
